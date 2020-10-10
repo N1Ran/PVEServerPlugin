@@ -47,7 +47,7 @@ namespace PVEServerPlugin.Modules
             }
         }
 
-        [Display(Order = 1, Name = "Enable Conflicts", Description = "Toggles the state of the plugin")]
+        [Display(Order = 2, Name = "Enable Conflicts", Description = "Toggles the state of the plugin")]
         public bool EnableConflict
         {
             get => _enableChallenge;

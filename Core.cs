@@ -1,35 +1,50 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Sandbox.Engine.Multiplayer;
-using Sandbox.Game;
+using PVEServerPlugin.Modules;
+using System.Windows.Controls;
 using Sandbox.Game.Multiplayer;
 using Sandbox.Game.World;
-using Sandbox.ModAPI;
 using Torch;
 using Torch.API;
 using Torch.API.Managers;
+using Torch.API.Plugins;
 using Torch.API.Session;
 using Torch.Session;
 using Torch.Utils;
-using VRage.Game;
+using Torch.Views;
 using VRage.Game.ModAPI;
 
 namespace PVEServerPlugin
 {
-    public class Core : TorchPluginBase
+    public class Core : TorchPluginBase, IWpfPlugin
     {
         private TorchSessionManager _sessionManager;
         public static Core Instance { get; private set; }
+
+        private UserControl _control;
+        private UserControl Control => _control ?? (_control = new PropertyGrid{ DataContext = Config.Instance});
+        public UserControl GetControl()
+        {
+            return Control;
+        }
+        private void EnableControl(bool enable = true)
+        {
+            _control?.Dispatcher?.Invoke(() =>
+            {
+                Control.IsEnabled = enable;
+                Control.DataContext = Config.Instance;
+            });
+
+        }
 
         public override void Init(ITorchBase torch)
         {
             base.Init(torch);
             Instance = this;
+            Config.Instance.Load();
             _sessionManager = Torch.Managers.GetManager<TorchSessionManager>();
 
             if (_sessionManager != null)
