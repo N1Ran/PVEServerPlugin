@@ -32,6 +32,7 @@ namespace PVEServerPlugin
 
         private static void ProcessDamage(object target, ref MyDamageInformation info)
         {
+            if (!Config.Instance.EnablePlugin) return;
             long id;
             long attackerId = info.AttackerId;
             switch (target)
@@ -85,7 +86,7 @@ namespace PVEServerPlugin
             var attackerSteamId = MySession.Static.Players.TryGetSteamId(attackerId);
             var targetSteamId = MySession.Static.Players.TryGetSteamId(id);
 
-            if (Utility.InConflict(attackerId,id)) return;
+            if (Utility.InConflict(attackerId,id, out var foundPair) && !foundPair.Pending) return;
 
             if (MySession.Static.Players.IdentityIsNpc(attackerId) ||id == 0 || MySession.Static.Players.IdentityIsNpc(id) || id == info.AttackerId || attackerSteamId == targetSteamId ||MySession.Static.Factions.TryGetPlayerFaction(attackerId) == MySession.Static.Factions.TryGetPlayerFaction(id))return;
             info.Amount = 0;

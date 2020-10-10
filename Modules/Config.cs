@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Xml.Serialization;
@@ -33,6 +34,28 @@ namespace PVEServerPlugin.Modules
         {
             _conflictPairs = new ObservableCollection<ConflictPairs>();
             _conflictPairs.CollectionChanged += ConflictPairsOnCollectionChanged;
+        }
+
+        [Display(Order = 1, Name = "Enable Plugin", Description = "Toggles the state of the plugin")]
+        public bool EnablePlugin
+        {
+            get => _enablePVE;
+            set
+            {
+                _enablePVE = value;
+                OnPropertyChanged();
+            }
+        }
+
+        [Display(Order = 1, Name = "Enable Conflicts", Description = "Toggles the state of the plugin")]
+        public bool EnableConflict
+        {
+            get => _enableChallenge;
+            set
+            {
+                _enableChallenge = value;
+                OnPropertyChanged();
+            }
         }
 
         [Display(Visible = false)]

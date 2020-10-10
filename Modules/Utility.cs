@@ -6,33 +6,44 @@ namespace PVEServerPlugin.Modules
 {
     public class Utility
     {
-        public static bool InConflict(long id, long challengingId)
+        public static bool InConflict(long id, long challengingId, out ConflictPairs foundPair)
         {
             var matching = false;
+            foundPair = null;
             foreach (var pair in Config.Instance.ConflictPairs)
             {
                 if (pair.Id == id && pair.ChallengingId == challengingId)
                 {
-                    matching = true;
+                    matching = !pair.Pending;
+                    foundPair = pair;
                     break;
                 }
 
-                if (pair.ChallengingId != id || pair.Id != challengingId) continue;
-                matching = true;
-                break;
+                if (pair.ChallengingId == id && pair.Id == challengingId)
+                {
+                    matching = !pair.Pending;
+                    foundPair = pair;
+                    break;
+                }
             }
+
             return matching;
         }
 
         public static void IssueChallenge(long id, long challengingId)
         {
-            if (InConflict(id, challengingId)) return;
+            if (InConflict(id, challengingId, out _)) return;
+            Config.Instance.ConflictPairs.Add(new ConflictPairs{ChallengingId = challengingId, Id = id,Pending = true});
         }
 
         public static void AcceptChallenge(long id, long challengingId)
         {
-            if (InConflict(id, challengingId)) return;
-            Config.Instance.ConflictPairs.Add(new ConflictPairs{ChallengingId = challengingId, Id = id });
+            if (InConflict(id, challengingId, out var foundPair))
+            {
+                foundPair.Pending = false;
+                return;
+            }
+            Config.Instance.ConflictPairs.Add(new ConflictPairs{ChallengingId = challengingId, Id = id,Pending = false});
 
         }
 

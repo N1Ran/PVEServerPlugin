@@ -7,6 +7,7 @@ namespace PVEServerPlugin.Modules
     {
         private long _id;
         private long _challengingId;
+        private bool _pending = true;
 
         public ConflictPairs()
         {
@@ -34,6 +35,16 @@ namespace PVEServerPlugin.Modules
             set
             {
                 _challengingId = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public bool Pending
+        {
+            get => _pending;
+            set
+            {
+                _pending = value;
                 OnPropertyChanged();
             }
         }

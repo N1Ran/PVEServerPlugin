@@ -13,6 +13,11 @@ namespace PVEServerPlugin
         [Permission(MyPromoteLevel.None)]
         public void PlayerChallenge(string playerName)
         {
+            if (!Config.Instance.EnableConflict)
+            {
+                Context.Respond("Conflict is not enabled");
+            }
+
             if (string.IsNullOrEmpty(playerName))
             {
                 Context.Respond("Command requires the name of the player you wish to challenge");
@@ -28,7 +33,7 @@ namespace PVEServerPlugin
             var challengingId = Utility.GetPlayerId(playerName);
             if (challengingId == 0)
             {
-                Context.Respond("Challenge failed. Player with name" + playerName + "not found");
+                Context.Respond("Challenge failed. Player with name " + playerName + " not found or not online");
                 return;
             }
 
@@ -39,6 +44,12 @@ namespace PVEServerPlugin
         [Permission(MyPromoteLevel.None)]
         public void FactionChallenge(string factionNameOrTag)
         {
+
+            if (!Config.Instance.EnableConflict)
+            {
+                Context.Respond("Conflict is not enabled");
+            }
+
             if (string.IsNullOrEmpty(factionNameOrTag))
             {
                 Context.Respond("Command requires the faction name or tag you wish to challenge");
