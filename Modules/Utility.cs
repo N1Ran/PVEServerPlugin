@@ -1,6 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using Sandbox.Game.World;
+using Torch.Mod;
+using Torch.Mod.Messages;
+using VRage.Game;
 
 namespace PVEServerPlugin.Modules
 {
@@ -32,8 +36,37 @@ namespace PVEServerPlugin.Modules
 
         public static void IssueChallenge(long id, long challengingId)
         {
-            if (InConflict(id, challengingId, out _)) return;
+            if (id == 0 || challengingId == 0) return;
+            if (InConflict(id, challengingId, out var foundPair))
+            {
+                foundPair.Pending = false;
+                return;
+            }
+            
             Config.Instance.ConflictPairs.Add(new ConflictPairs{ChallengingId = challengingId, Id = id,Pending = true});
+            HashSet<ulong> steamIds = new HashSet<ulong>();
+            var faction = MySession.Static.Factions.TryGetFactionById(challengingId);
+            string challengerName = "";
+            if (faction != null)
+            {
+                foreach (var (memberId,member) in faction.Members)
+                {
+                    steamIds.Add(MySession.Static.Players.TryGetSteamId(memberId));
+                }
+                challengerName = MySession.Static.Factions.TryGetFactionById(id).Tag;
+
+            }
+            else
+            {
+                steamIds.Add(MySession.Static.Players.TryGetSteamId(challengingId));
+                challengerName = MySession.Static.Players.TryGetIdentity(id).DisplayName ?? "";
+            }
+            if (steamIds.Count == 0 || string.IsNullOrEmpty(challengerName)) return;
+            foreach (var steamId in steamIds)
+            {
+                ModCommunication.SendMessageTo(new NotificationMessage($"{challengerName} is calling you out",10000,MyFontEnum.White),steamId );
+            }
+
         }
 
         public static void AcceptChallenge(long id, long challengingId)
@@ -44,6 +77,44 @@ namespace PVEServerPlugin.Modules
                 return;
             }
             Config.Instance.ConflictPairs.Add(new ConflictPairs{ChallengingId = challengingId, Id = id,Pending = false});
+            HashSet<ulong> steamIds = new HashSet<ulong>();
+            var faction = MySession.Static.Factions.TryGetFactionById(challengingId);
+            string challengerName = "";
+
+            if (faction != null)
+            {
+                foreach (var (memberId,member) in faction.Members)
+                {
+                    steamIds.Add(MySession.Static.Players.TryGetSteamId(memberId));
+                }
+
+                var challengerFaction = MySession.Static.Factions.TryGetFactionById(id);
+                if (challengerFaction != null)
+                {
+                    challengerName = MySession.Static.Factions.TryGetFactionById(id).Tag;
+                    foreach (var memberId in faction.Members.Keys)
+                    {
+                        steamIds.Add(MySession.Static.Players.TryGetSteamId(memberId));
+                    }
+                }
+
+            }
+            else
+            {
+                steamIds.Add(MySession.Static.Players.TryGetSteamId(challengingId));
+                challengerName = MySession.Static.Players.TryGetIdentity(id).DisplayName ?? "";
+            }
+            if (steamIds.Count == 0 || string.IsNullOrEmpty(challengerName)) return;
+            foreach (var steamId in steamIds)
+            {
+                ModCommunication.SendMessageTo(new NotificationMessage($"Conflict with {challengerName}",10000,MyFontEnum.White),steamId );
+            }
+
+
+        }
+
+        public static void AcceptChallenge(long id)
+        {
 
         }
 

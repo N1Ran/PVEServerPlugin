@@ -1,17 +1,11 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
-using System.ComponentModel;
-using System.Diagnostics;
 using System.IO;
 using System.Xml.Serialization;
 using Torch;
 using Torch.Views;
 using NLog;
-using NLog.Targets.Wrappers;
-using Sandbox.ModAPI;
-using VRage.Library.Threading;
 
 namespace PVEServerPlugin.Modules
 {
@@ -19,13 +13,14 @@ namespace PVEServerPlugin.Modules
     public class Config : ViewModel
     {
         private static Config _instance;
-        private bool _enablePVE;
+        private bool _enablePve;
         private bool _enableChallenge;
         private static readonly Logger Log = LogManager.GetCurrentClassLogger();
 
         private ObservableCollection<ConflictPairs> _conflictPairs;
         private bool _loading;
         private XmlAttributeOverrides _overrides;
+        private bool _enableFactionDamage = true;
 
         public static Config Instance => _instance ?? (_instance = new Config());
 
@@ -39,10 +34,10 @@ namespace PVEServerPlugin.Modules
         [Display(Order = 1, Name = "Enable Plugin", Description = "Toggles the state of the plugin")]
         public bool EnablePlugin
         {
-            get => _enablePVE;
+            get => _enablePve;
             set
             {
-                _enablePVE = value;
+                _enablePve = value;
                 OnPropertyChanged();
             }
         }
@@ -54,6 +49,17 @@ namespace PVEServerPlugin.Modules
             set
             {
                 _enableChallenge = value;
+                OnPropertyChanged();
+            }
+        }
+
+        [Display(Order = 3, Name = "Allow Faction Member Damage", Description = "Toggles the state of the plugin")]
+        public bool EnableFactionDamage
+        {
+            get => _enableFactionDamage;
+            set
+            {
+                _enableFactionDamage = value;
                 OnPropertyChanged();
             }
         }

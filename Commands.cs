@@ -73,5 +73,22 @@ namespace PVEServerPlugin
 
             Utility.IssueChallenge(playerFaction.FactionId, challengingId);
         }
+
+        [Command("accept")]
+        [Permission(MyPromoteLevel.None)]
+        public void AcceptChallenge()
+        {
+
+            var playerId = Context.Player.IdentityId;
+
+            if (playerId == 0)
+            {
+                Context.Respond("This command can only be used ingame");
+                return;
+            }
+
+            Utility.AcceptChallenge(playerId);
+
+        }
     }
 }
