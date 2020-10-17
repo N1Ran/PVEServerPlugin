@@ -8,6 +8,8 @@ namespace PVEServerPlugin.Modules
         private long _id;
         private long _challengingId;
         private bool _pending = true;
+        private bool _submit;
+        private ulong _changeRequestId;
 
         public ConflictPairs()
         {
@@ -48,6 +50,27 @@ namespace PVEServerPlugin.Modules
                 OnPropertyChanged();
             }
         }
+
+        public bool Submit
+        {
+            get => _submit;
+            set
+            {
+                _submit = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public ulong ChangeRequestId
+        {
+            get => _changeRequestId;
+            set
+            {
+                _changeRequestId = value;
+                OnPropertyChanged();
+            }
+        }
+
 
     }
 }

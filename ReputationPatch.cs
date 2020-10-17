@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Reflection;
 using NLog;
+using PVEServerPlugin.Modules;
 using SpaceEngineers.Game.Entities.Blocks;
 using Torch.Managers.PatchManager;
 using Sandbox.Game.Multiplayer;
@@ -36,8 +37,9 @@ namespace PVEServerPlugin
         private static bool ChangeRequest(MyFactionStateChange action, long fromFactionId, long toFactionId, long playerId)
         {
             if (action != MyFactionStateChange.DeclareWar) return true;
-
-            Core.RequestFactionChange(MyFactionStateChange.AcceptPeace, fromFactionId, toFactionId, MySession.Static.Players.TryGetPlayerBySteamId(MyEventContext.Current.Sender.Value).Identity.IdentityId);
+            if (Config.Instance.EnableConflict && Utility.InConflict(fromFactionId, toFactionId, out var foundPair) && !foundPair.Pending) return true;
+            Utility.IssueChallenge(fromFactionId,toFactionId,MyEventContext.Current.Sender.Value);
+            Core.RequestFactionChange(MyFactionStateChange.AcceptPeace, fromFactionId, toFactionId, playerId);
             return false;
         }
 
@@ -45,7 +47,7 @@ namespace PVEServerPlugin
             long attackedIdentityId,
             MyReputationDamageType repDamageType)
         {
-            return MySession.Static.Factions.GetNpcFactions().Any(x =>
+            return (Config.Instance.EnableConflict && Utility.InConflict(playerIdentityId,attackedIdentityId, out var foundPair) && !foundPair.Pending )||MySession.Static.Factions.GetNpcFactions().Any(x =>
                 x.Members.ContainsKey(playerIdentityId) || x.Members.ContainsKey(attackedIdentityId));
         }
 

@@ -98,7 +98,7 @@ namespace PVEServerPlugin
 
 
 
-        private void RecheckReputations()
+        public void RecheckReputations()
         {
 
             var playerFactions = new HashSet<MyFaction>(MySession.Static.Factions.Select(x=>x.Value).Where(x=>!x.IsEveryoneNpc()));
@@ -110,8 +110,17 @@ namespace PVEServerPlugin
 
             foreach (var player in players)
             {
+                var playerFaction = MySession.Static.Factions.GetPlayerFaction(player.IdentityId);
                 foreach (var faction in playerFactions)
                 {
+                    if (Config.Instance.EnableConflict && playerFaction != null &&
+                        Utility.InConflict(playerFaction.FactionId, faction.FactionId, out var foundPair) &&
+                        !foundPair.Pending)
+                    {
+                        MySession.Static.Factions.SetReputationBetweenPlayerAndFaction(player.IdentityId, faction.FactionId,
+                            -500);
+                        continue;
+                    }
                     MySession.Static.Factions.SetReputationBetweenPlayerAndFaction(player.IdentityId, faction.FactionId,
                         0);
                 }
