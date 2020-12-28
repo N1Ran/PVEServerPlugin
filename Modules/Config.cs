@@ -15,6 +15,7 @@ namespace PVEServerPlugin.Modules
         private static Config _instance;
         private bool _enablePve;
         private bool _enableChallenge;
+        private bool _enableNobody;
         private static readonly Logger Log = LogManager.GetCurrentClassLogger();
 
         private ObservableCollection<ConflictPairs> _conflictPairs;
@@ -42,7 +43,18 @@ namespace PVEServerPlugin.Modules
             }
         }
 
-        [Display(Order = 2, Name = "Enable Conflicts", Description = "Toggles the state of the plugin")]
+        [Display(Order = 2, Name = "Enable Plugin", Description = "Toggles the state of the plugin")]
+        public bool EnableNobody
+        {
+            get => _enableNobody;
+            set
+            {
+                _enableNobody = value;
+                OnPropertyChanged();
+            }
+        }
+
+        [Display(Order = 3, Name = "Enable Conflicts", Description = "Toggles the state of the plugin")]
         public bool EnableConflict
         {
             get => _enableChallenge;
@@ -53,7 +65,7 @@ namespace PVEServerPlugin.Modules
             }
         }
 
-        [Display(Order = 3, Name = "Allow Faction Member Damage", Description = "Toggles the state of the plugin")]
+        [Display(Order = 4, Name = "Allow Faction Member Damage", Description = "Toggles the state of the plugin")]
         public bool EnableFactionDamage
         {
             get => _enableFactionDamage;

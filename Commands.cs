@@ -16,6 +16,7 @@ namespace PVEServerPlugin
             if (!Config.Instance.EnableConflict)
             {
                 Context.Respond("Conflict is not enabled");
+                return;
             }
 
             if (string.IsNullOrEmpty(playerName))
@@ -48,6 +49,7 @@ namespace PVEServerPlugin
             if (!Config.Instance.EnableConflict)
             {
                 Context.Respond("Conflict is not enabled");
+                return;
             }
 
             if (string.IsNullOrEmpty(factionNameOrTag))
@@ -83,7 +85,14 @@ namespace PVEServerPlugin
         [Command("accept challenge")]
         [Permission(MyPromoteLevel.None)]
         public void AcceptChallenge()
+        
         {
+            if (!Config.Instance.EnableConflict)
+            {
+                Context.Respond("Conflict is not enabled");
+                return;
+            }
+
             var playerId = Context.Player.IdentityId;
 
             if (playerId == 0)
@@ -129,6 +138,12 @@ namespace PVEServerPlugin
         [Permission(MyPromoteLevel.None)]
         public void AcceptSubmission()
         {
+            if (!Config.Instance.EnableConflict)
+            {
+                Context.Respond("Conflict is not enabled");
+                return;
+            }
+
             var playerId = Context.Player.IdentityId;
 
             if (playerId == 0)
@@ -176,8 +191,8 @@ namespace PVEServerPlugin
             if (!Config.Instance.EnableConflict)
             {
                 Context.Respond("Conflict is not enabled");
+                return;
             }
-
             if (string.IsNullOrEmpty(factionNameOrTag))
             {
                 Context.Respond("Command requires the faction name or tag you wish to challenge");

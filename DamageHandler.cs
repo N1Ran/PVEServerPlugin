@@ -88,7 +88,7 @@ namespace PVEServerPlugin
 
             if (Config.Instance.EnableConflict && Utility.InConflict(attackerId,id, out var foundPair) && !foundPair.Pending) return;
             if (Config.Instance.EnableFactionDamage && MySession.Static.Factions.TryGetPlayerFaction(attackerId) == MySession.Static.Factions.TryGetPlayerFaction(id)) return;
-            if (MySession.Static.Players.IdentityIsNpc(attackerId) ||id == 0 || MySession.Static.Players.IdentityIsNpc(id) || id == info.AttackerId || attackerSteamId == targetSteamId)return;
+            if (MySession.Static.Players.IdentityIsNpc(attackerId) || (Config.Instance.EnableNobody && id == 0) || MySession.Static.Players.IdentityIsNpc(id) || id == info.AttackerId || attackerSteamId == targetSteamId)return;
             info.Amount = 0;
         }
 
