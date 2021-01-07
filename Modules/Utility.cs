@@ -6,11 +6,12 @@ using Torch;
 using Torch.Mod;
 using Torch.Mod.Messages;
 using VRage.Game;
+using VRage.Game.Entity;
 using VRage.Plugins;
 
 namespace PVEServerPlugin.Modules
 {
-    public class Utility
+    public static class Utility
     {
         public static bool InConflict(long id, long challengingId, out ConflictPairs foundPair)
         {
@@ -304,6 +305,7 @@ namespace PVEServerPlugin.Modules
             }
 
         }
+
 
     }
 }

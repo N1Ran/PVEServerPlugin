@@ -15,7 +15,8 @@ namespace PVEServerPlugin.Modules
         private static Config _instance;
         private bool _enablePve;
         private bool _enableChallenge;
-        private bool _enableNobody;
+        private bool _enableNoOwner;
+        private MtObservableCollection<Zone> _pvpZones;
         private static readonly Logger Log = LogManager.GetCurrentClassLogger();
 
         private ObservableCollection<ConflictPairs> _conflictPairs;
@@ -26,10 +27,14 @@ namespace PVEServerPlugin.Modules
         public static Config Instance => _instance ?? (_instance = new Config());
 
 
+
         public Config()
         {
             _conflictPairs = new ObservableCollection<ConflictPairs>();
-            _conflictPairs.CollectionChanged += ConflictPairsOnCollectionChanged;
+            _conflictPairs.CollectionChanged += ItemsCollectionChanged;
+
+            _pvpZones = new MtObservableCollection<Zone>();
+            _pvpZones.CollectionChanged += ItemsCollectionChanged;
         }
 
         [Display(Order = 1, Name = "Enable Plugin", Description = "Toggles the state of the plugin")]
@@ -43,13 +48,13 @@ namespace PVEServerPlugin.Modules
             }
         }
 
-        [Display(Order = 2, Name = "Enable Plugin", Description = "Toggles the state of the plugin")]
-        public bool EnableNobody
+        [Display(Order = 2, Name = "Enable NoOwnership Death", Description = "Allows death from grids/blocks with no ownership")]
+        public bool EnableNoOwner
         {
-            get => _enableNobody;
+            get => _enableNoOwner;
             set
             {
-                _enableNobody = value;
+                _enableNoOwner = value;
                 OnPropertyChanged();
             }
         }
@@ -76,6 +81,19 @@ namespace PVEServerPlugin.Modules
             }
         }
 
+
+        [Display(Order = 5, EditorType = typeof(EmbeddedCollectionEditor))]
+        public MtObservableCollection<Zone> PvpZones
+        {
+            get => _pvpZones;
+            set
+            {
+                _pvpZones = value;
+                OnPropertyChanged();
+                Save();
+            }
+        }
+
         [Display(Visible = false)]
         public ObservableCollection<ConflictPairs> ConflictPairs
         {
@@ -86,9 +104,11 @@ namespace PVEServerPlugin.Modules
                 OnPropertyChanged();
             }
         }
-        private void ConflictPairsOnCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+
+        private void ItemsCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
             OnPropertyChanged();
+            Instance.Save(); 
         }
 
         public void Save()
@@ -102,12 +122,7 @@ namespace PVEServerPlugin.Modules
                     using (var writer = new StreamWriter(fileName))
                     {
                         XmlSerializer x;
-                        if (_overrides != null)
-                            x = new XmlSerializer(typeof(Config), _overrides);
-                        else
-                        {
-                            x = new XmlSerializer(typeof(Config));
-                        }
+                        x = _overrides != null ? new XmlSerializer(typeof(Config), _overrides) : new XmlSerializer(typeof(Config));
                         x.Serialize(writer, _instance);
                         writer.Close();
                     }

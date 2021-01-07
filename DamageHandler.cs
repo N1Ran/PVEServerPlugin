@@ -40,16 +40,22 @@ namespace PVEServerPlugin
                 case MySlimBlock block:
                     id = block.CubeGrid.BigOwners.Count> 0 ? block.CubeGrid.BigOwners[0]:0;
                     break;
-                case MyCharacter character:
-                    //id = character.GetPlayerIdentityId();
+                case MyCharacter _:
                     return;
                 default:
                     id = 0;
                     break;
             }
 
+
             if (MyEntities.TryGetEntityById(info.AttackerId, out var attacker, true))
             {
+                foreach (var zone in Config.Instance.PvpZones)
+                {
+                    if (!zone.IsWithinZoneRadius(attacker)) continue;
+                    return;
+                }
+
                 if (attacker is MyVoxelBase)
                     return;
 
@@ -88,7 +94,7 @@ namespace PVEServerPlugin
 
             if (Config.Instance.EnableConflict && Utility.InConflict(attackerId,id, out var foundPair) && !foundPair.Pending) return;
             if (Config.Instance.EnableFactionDamage && MySession.Static.Factions.TryGetPlayerFaction(attackerId) == MySession.Static.Factions.TryGetPlayerFaction(id)) return;
-            if (MySession.Static.Players.IdentityIsNpc(attackerId) || (Config.Instance.EnableNobody && id == 0) || MySession.Static.Players.IdentityIsNpc(id) || id == info.AttackerId || attackerSteamId == targetSteamId)return;
+            if (MySession.Static.Players.IdentityIsNpc(attackerId) || id == 0|| (Config.Instance.EnableNoOwner && attackerId == 0) || MySession.Static.Players.IdentityIsNpc(id) || id == info.AttackerId || attackerSteamId == targetSteamId)return;
             info.Amount = 0;
         }
 
