@@ -31,14 +31,14 @@ namespace PVEServerPlugin
                 return;
             }
 
-            var challengingId = Utility.GetPlayerId(playerName);
+            var challengingId = Utility.Utilities.GetPlayerId(playerName);
             if (challengingId == 0)
             {
                 Context.Respond("Challenge failed. Player with name " + playerName + " not found or not online");
                 return;
             }
 
-            Utility.IssueChallenge(id, challengingId,Context.Player.SteamUserId);
+            ConflictPairModule.IssueChallenge(id, challengingId,Context.Player.SteamUserId);
         }
 
         [Command("challenge faction")]
@@ -66,7 +66,7 @@ namespace PVEServerPlugin
             }
 
             var playerFaction = MySession.Static.Factions.GetPlayerFaction(Context.Player.IdentityId);
-            var challengingId = Utility.GetFactionId(factionNameOrTag);
+            var challengingId = Utility.Utilities.GetFactionId(factionNameOrTag);
             if (challengingId == 0 || playerFaction == null ||(!playerFaction.IsLeader(playerId) && !playerFaction.IsFounder(playerId)))
             {
                 Context.Respond("Faction error. This command requires you to be the founder or leader of your faction and a valid faction name or tag to issue challenge");
@@ -79,7 +79,7 @@ namespace PVEServerPlugin
                 return;
             }
 
-            Utility.IssueChallenge(playerFaction.FactionId, challengingId,Context.Player.SteamUserId);
+            ConflictPairModule.IssueChallenge(playerFaction.FactionId, challengingId,Context.Player.SteamUserId);
         }
 
         [Command("accept challenge")]
@@ -93,44 +93,49 @@ namespace PVEServerPlugin
                 return;
             }
 
-            var playerId = Context.Player.IdentityId;
 
-            if (playerId == 0)
+            if (Context.Player == null)
             {
                 Context.Respond("This command can only be used ingame");
                 return;
             }
 
-            if (Context.Args.Count < 1)
+            var playerId = Context.Player.IdentityId;
+
+            if (Context.Args?.Count == 0)
             {
-                if (!Utility.AcceptChallenge(playerId,Context.Player.SteamUserId))
+                if (!ConflictPairModule.AcceptChallenge(playerId,Context.Player.SteamUserId))
                 {
                     Context.Respond("No pending conflict found");
                     return;
                 }
             }
 
-            var factionId = Utility.GetFactionId(Context.Args[0]);
-            var challengingPlayerId = Utility.GetPlayerId(Context.Args[0]);
-            if (factionId > 0)
+            if (Context.Args != null)
             {
-                var playerFaction = MySession.Static.Factions.TryGetPlayerFaction(playerId);
-                if (playerFaction == null || (!playerFaction.IsFounder(playerId) && !playerFaction.IsLeader(playerId)))
+                var factionId = Utility.Utilities.GetFactionId(Context.Args[0]);
+                var challengingPlayerId = Utility.Utilities.GetPlayerId(Context.Args[0]);
+                if (factionId > 0)
                 {
-                    Context.Respond("You either do not belong to a faction or do not have permission to accept challenge");
+                    var playerFaction = MySession.Static.Factions.TryGetPlayerFaction(playerId);
+                    if (playerFaction == null || (!playerFaction.IsFounder(playerId) && !playerFaction.IsLeader(playerId)))
+                    {
+                        Context.Respond("You either do not belong to a faction or do not have permission to accept challenge");
+                        return;
+                    }
+                    ConflictPairModule.AcceptChallenge(playerId, factionId,Context.Player.SteamUserId);
                     return;
                 }
-                Utility.AcceptChallenge(playerId, factionId,Context.Player.SteamUserId);
-                return;
+
+                if (challengingPlayerId > 0)
+                {
+                    ConflictPairModule.AcceptChallenge(playerId, challengingPlayerId,Context.Player.SteamUserId);
+                    return;
+                }
+                Context.Respond($"{Context.Args[0]} not found");
+
             }
 
-            if (challengingPlayerId > 0)
-            {
-                Utility.AcceptChallenge(playerId, challengingPlayerId,Context.Player.SteamUserId);
-                return;
-            }
-
-            Context.Respond($"{Context.Args[0]} not found");
 
         }
 
@@ -154,15 +159,15 @@ namespace PVEServerPlugin
 
             if (Context.Args.Count < 1)
             {
-                if (!Utility.AcceptSubmission(playerId))
+                if (!ConflictPairModule.AcceptSubmission(playerId))
                 {
                     Context.Respond("No pending conflict found");
                     return;
                 }
             }
 
-            var factionId = Utility.GetFactionId(Context.Args[0]);
-            var challengingPlayerId = Utility.GetPlayerId(Context.Args[0]);
+            var factionId = Utility.Utilities.GetFactionId(Context.Args[0]);
+            var challengingPlayerId = Utility.Utilities.GetPlayerId(Context.Args[0]);
             if (factionId > 0)
             {
                 var playerFaction = MySession.Static.Factions.TryGetPlayerFaction(playerId);
@@ -171,13 +176,13 @@ namespace PVEServerPlugin
                     Context.Respond("You either do not belong to a faction or do not have permission to accept submission");
                     return;
                 }
-                Utility.AcceptSubmission(playerId, factionId,Context.Player.SteamUserId);
+                ConflictPairModule.AcceptSubmission(playerId, factionId,Context.Player.SteamUserId);
                 return;
             }
 
             if (challengingPlayerId > 0)
             {
-                Utility.AcceptSubmission(playerId, challengingPlayerId,Context.Player.SteamUserId);
+                ConflictPairModule.AcceptSubmission(playerId, challengingPlayerId,Context.Player.SteamUserId);
                 return;
             }
 
@@ -207,7 +212,7 @@ namespace PVEServerPlugin
             }
 
             var playerFaction = MySession.Static.Factions.GetPlayerFaction(Context.Player.IdentityId);
-            var challengingId = Utility.GetFactionId(factionNameOrTag);
+            var challengingId = Utility.Utilities.GetFactionId(factionNameOrTag);
             if (challengingId == 0 || playerFaction == null ||(!playerFaction.IsLeader(playerId) && !playerFaction.IsFounder(playerId)))
             {
                 Context.Respond("Faction error. This command requires you to be the founder or leader of your faction and a valid faction name or tag to issue challenge");
@@ -220,7 +225,7 @@ namespace PVEServerPlugin
                 return;
             }
 
-            Utility.RequestSubmit(playerFaction.FactionId, challengingId,Context.Player.SteamUserId);
+            ConflictPairModule.RequestSubmit(playerFaction.FactionId, challengingId,Context.Player.SteamUserId);
         }
     }
 }

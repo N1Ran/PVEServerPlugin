@@ -1,12 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using PVEServerPlugin.Modules;
 using System.Windows.Controls;
+using Microsoft.Win32;
+using Newtonsoft.Json;
+using NLog;
+using PVEServerPlugin.ProcessHandlers;
 using Sandbox.Game.Multiplayer;
 using Sandbox.Game.World;
+using Sandbox.ModAPI;
 using Torch;
 using Torch.API;
 using Torch.API.Managers;
@@ -21,9 +27,14 @@ namespace PVEServerPlugin
 {
     public class Core : TorchPluginBase, IWpfPlugin
     {
+        public readonly Logger Log = LogManager.GetLogger("PVEPlugin");
+        private Thread _processThread;
+        private HashSet<Thread> _processThreads;
+        private HashSet<Base> _handlers;
+        private bool _running;
         private TorchSessionManager _sessionManager;
         public static Core Instance { get; private set; }
-
+        public string conflictDataPath = "";
         private UserControl _control;
         private UserControl Control => _control ?? (_control = new PropertyGrid{ DataContext = Config.Instance});
         public UserControl GetControl()
@@ -51,16 +62,33 @@ namespace PVEServerPlugin
                 _sessionManager.SessionStateChanged += SessionChanged;
         }
 
+        public override void Update()
+        {
+            base.Update();
+
+            if (MyAPIGateway.Session == null)
+                return;
+            Utility.EntityCache.Update();
+        }
+
         private void SessionChanged(ITorchSession session, TorchSessionState newstate)
         {
+            _running = newstate == TorchSessionState.Loaded;
             switch (newstate)
             {
                 case TorchSessionState.Loading:
-                    
+                   var storageDir = Path.Combine(Torch.CurrentSession.KeenSession.CurrentPath, "Storage");
+                   conflictDataPath = Path.Combine(storageDir, "Conflict.json");
+                    if (!File.Exists(conflictDataPath))
+                    {
+                        if (!Directory.Exists(storageDir)) Directory.CreateDirectory(storageDir);
+                        File.Create(conflictDataPath);
+                        Log.Warn($"Creating conflict data at {conflictDataPath}");
+                    }
+
                     break;
                 case TorchSessionState.Loaded:
                     Load();
-                    RecheckReputations();
                     break;
                 case TorchSessionState.Unloading:
                     break;
@@ -73,7 +101,71 @@ namespace PVEServerPlugin
         {
             DamageHandler.Init();
            MySession.Static.Factions.FactionCreated += FactionsOnFactionCreated;
+           var data = File.ReadAllText(conflictDataPath);
+           if (!string.IsNullOrEmpty(data))
+           {
+               ConflictPairModule.ConflictPairs =
+                   JsonConvert.DeserializeObject<HashSet<ConflictPairModule.ConflictPairData>>(
+                       File.ReadAllText(conflictDataPath));
+           }
 
+           RecheckReputations();
+           _handlers = new HashSet<Base>
+           {
+               new PvPZoneMessage(),
+           };
+           _processThreads = new HashSet<Thread>();
+           _processThread = new Thread(PluginProcessing);
+           _processThread.Start();
+
+        }
+
+        private void PluginProcessing()
+        {
+            try
+            {
+                foreach (var handler in _handlers)
+                {
+                    Base currentHandler = handler;
+                    var thread = new Thread(() =>
+                    {
+                        while (_running)
+                        {
+                            if (currentHandler.CanProcess())
+                            {
+                                try
+                                {
+                                    currentHandler.Handle();
+                                }
+                                catch (Exception ex)
+                                {
+                                    Log.Warn("Handler Problems: {0} - {1}", currentHandler.GetUpdateResolution(),
+                                        ex);
+                                }
+
+                                currentHandler.LastUpdate = DateTime.Now;
+                            }
+
+                            Thread.Sleep(100);
+                        }
+
+                    });
+                    _processThreads.Add(thread);
+                    thread.Start();
+                }
+
+                foreach (Thread thread in _processThreads)
+                    thread.Join();
+
+            }
+            catch (ThreadAbortException ex)
+            {
+                Log.Trace(ex);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex);
+            }
         }
 
 
@@ -114,8 +206,8 @@ namespace PVEServerPlugin
                 foreach (var faction in playerFactions)
                 {
                     if (Config.Instance.EnableConflict && playerFaction != null &&
-                        Utility.InConflict(playerFaction.FactionId, faction.FactionId, out var foundPair) &&
-                        !foundPair.Pending)
+                        ConflictPairModule.InConflict(playerFaction.FactionId, faction.FactionId, out var foundPair) &&
+                        !foundPair.ConflictPending)
                     {
                         MySession.Static.Factions.SetReputationBetweenPlayerAndFaction(player.IdentityId, faction.FactionId,
                             -500);

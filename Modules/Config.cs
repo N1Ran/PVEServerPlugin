@@ -19,7 +19,7 @@ namespace PVEServerPlugin.Modules
         private MtObservableCollection<Zone> _pvpZones;
         private static readonly Logger Log = LogManager.GetCurrentClassLogger();
 
-        private ObservableCollection<ConflictPairs> _conflictPairs;
+        private ObservableCollection<ConflictPairModule> _conflictPairs;
         private bool _loading;
         private XmlAttributeOverrides _overrides;
         private bool _enableFactionDamage = true;
@@ -30,7 +30,7 @@ namespace PVEServerPlugin.Modules
 
         public Config()
         {
-            _conflictPairs = new ObservableCollection<ConflictPairs>();
+            _conflictPairs = new ObservableCollection<ConflictPairModule>();
             _conflictPairs.CollectionChanged += ItemsCollectionChanged;
 
             _pvpZones = new MtObservableCollection<Zone>();
@@ -94,16 +94,6 @@ namespace PVEServerPlugin.Modules
             }
         }
 
-        [Display(Visible = false)]
-        public ObservableCollection<ConflictPairs> ConflictPairs
-        {
-            get => _conflictPairs;
-            set
-            {
-                _conflictPairs = value;
-                OnPropertyChanged();
-            }
-        }
 
         private void ItemsCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
@@ -163,7 +153,6 @@ namespace PVEServerPlugin.Modules
                     {
                         Log.Warn("No Settings. Initializing new file at " + fileName);
                         _instance = new Config();
-                        Instance.ConflictPairs.Add(new ConflictPairs());
                         using (var writer = new StreamWriter(fileName))
                         {
                             var x = _overrides != null

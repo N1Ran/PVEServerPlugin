@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Specialized;
 using System.Windows.Documents;
+using System.Xml.Serialization;
 using Torch;
 using Torch.Views;
 using Sandbox.Game.Entities;
 using Sandbox.Game.EntityComponents;
+using VRage.Collections;
 using VRageMath;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI.Ingame;
@@ -20,6 +22,10 @@ namespace PVEServerPlugin.Modules
         private double _yValue;
         private double _zValue;
         private int _radius;
+        private string _name;
+        private string _entryMessage;
+        private string _exitMessage;
+        private MyConcurrentHashSet<long> _containsEntities = new MyConcurrentHashSet<long>();
 
         public Zone()
         {
@@ -38,6 +44,20 @@ namespace PVEServerPlugin.Modules
             Config.Instance.Save();
         }
 
+        [XmlIgnore]
+        [Display(Visible = false)]
+        public MyConcurrentHashSet<long> ContainsEntities => _containsEntities;
+
+        [Display(Order = 0, Name = "Name", Description = "Name of the limit. This helps with some of the commands")]
+        public string Name
+        {
+            get => _name;
+            set
+            {
+                _name = string.IsNullOrEmpty(value) ? $"Zone {Config.Instance.PvpZones.Count + 1}":value;
+                OnPropertyChanged();
+            }
+        }
         [Display(Order = 1, Name = "Enable Zone", Description = "Check box to enable this zone")]
         public bool Enable
         {
@@ -93,6 +113,34 @@ namespace PVEServerPlugin.Modules
                 _zValue = value;
                 OnPropertyChanged();
             }
+        }
+
+        [Display(Order = 6, Name = "Entry Message")]
+        public string EntryMessage
+        {
+            get => _entryMessage;
+            set
+            {
+                _entryMessage = value;
+                OnPropertyChanged();
+            }
+        }
+
+        [Display(Order = 7, Name = "Exit Message")]
+        public string ExitMessage
+        {
+            get => _exitMessage;
+            set
+            {
+                _exitMessage = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public override string ToString()
+        {
+            var useName = string.IsNullOrEmpty(Name) ? "UnNamed Zone" : Name;
+            return useName;
         }
 
         public bool IsWithinZoneRadius(MyEntity entity)
