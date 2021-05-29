@@ -18,6 +18,8 @@ using Torch.API;
 using Torch.API.Managers;
 using Torch.API.Plugins;
 using Torch.API.Session;
+using Torch.Managers;
+using Torch.Managers.PatchManager;
 using Torch.Session;
 using Torch.Utils;
 using Torch.Views;
@@ -32,9 +34,13 @@ namespace PVEServerPlugin
         private HashSet<Thread> _processThreads;
         private HashSet<Base> _handlers;
         private bool _running;
+        public static bool NexusDetected;
         private TorchSessionManager _sessionManager;
+        private PatchManager _pm;
+        private PatchContext _context;
+
         public static Core Instance { get; private set; }
-        public string conflictDataPath = "";
+        public string ConflictDataPath = "";
         private UserControl _control;
         private UserControl Control => _control ?? (_control = new PropertyGrid{ DataContext = Config.Instance});
         public UserControl GetControl()
@@ -57,9 +63,20 @@ namespace PVEServerPlugin
             Instance = this;
             Config.Instance.Load();
             _sessionManager = Torch.Managers.GetManager<TorchSessionManager>();
-
+            _pm = torch.Managers.GetManager<PatchManager>();
+            _context = _pm.AcquireContext();
+            NexusDetected = Torch.Managers.GetManager<PluginManager>().Plugins.Keys
+                .Contains(new Guid("28a12184-0422-43ba-a6e6-2e228611cca5"));
             if (_sessionManager != null)
                 _sessionManager.SessionStateChanged += SessionChanged;
+
+            if (NexusDetected)
+            {
+                Log.Warn("Nexus plugin detected, some features will be disabled");
+                return;
+            }
+            ReputationPatch.Patch(_context);
+
         }
 
         public override void Update()
@@ -78,12 +95,13 @@ namespace PVEServerPlugin
             {
                 case TorchSessionState.Loading:
                    var storageDir = Path.Combine(Torch.CurrentSession.KeenSession.CurrentPath, "Storage");
-                   conflictDataPath = Path.Combine(storageDir, "Conflict.json");
-                    if (!File.Exists(conflictDataPath))
+                   if (NexusDetected) break;
+                   ConflictDataPath = Path.Combine(storageDir, "Conflict.json");
+                    if (!File.Exists(ConflictDataPath))
                     {
                         if (!Directory.Exists(storageDir)) Directory.CreateDirectory(storageDir);
-                        File.Create(conflictDataPath);
-                        Log.Warn($"Creating conflict data at {conflictDataPath}");
+                        File.Create(ConflictDataPath);
+                        Log.Warn($"Creating conflict data at {ConflictDataPath}");
                     }
 
                     break;
@@ -98,18 +116,8 @@ namespace PVEServerPlugin
         }
 
         private void Load()
-        {
+        { 
             DamageHandler.Init();
-           MySession.Static.Factions.FactionCreated += FactionsOnFactionCreated;
-           var data = File.ReadAllText(conflictDataPath);
-           if (!string.IsNullOrEmpty(data))
-           {
-               ConflictPairModule.ConflictPairs =
-                   JsonConvert.DeserializeObject<HashSet<ConflictPairModule.ConflictPairData>>(
-                       File.ReadAllText(conflictDataPath));
-           }
-
-           RecheckReputations();
            _handlers = new HashSet<Base>
            {
                new PvPZoneMessage(),
@@ -117,6 +125,18 @@ namespace PVEServerPlugin
            _processThreads = new HashSet<Thread>();
            _processThread = new Thread(PluginProcessing);
            _processThread.Start();
+            if (NexusDetected) return;
+            var data = File.ReadAllText(ConflictDataPath);
+            if (!string.IsNullOrEmpty(data))
+            {
+                ConflictPairModule.ConflictPairs =
+                    JsonConvert.DeserializeObject<HashSet<ConflictPairModule.ConflictPairData>>(
+                        File.ReadAllText(ConflictDataPath));
+            }
+
+
+            MySession.Static.Factions.FactionCreated += FactionsOnFactionCreated;
+            RecheckReputations();
 
         }
 
@@ -182,7 +202,7 @@ namespace PVEServerPlugin
                 Task.Run(() =>
                 {
                     Thread.Sleep(100);
-                    FactionStateChangeRequest(MyFactionStateChange.AcceptPeace, obj, fac.FactionId, 0);
+                    _factionStateChangeRequest(MyFactionStateChange.AcceptPeace, obj, fac.FactionId, 0);
 
                 });
             }
@@ -192,42 +212,49 @@ namespace PVEServerPlugin
 
         public void RecheckReputations()
         {
-
             var playerFactions = new HashSet<MyFaction>(MySession.Static.Factions.Select(x=>x.Value).Where(x=>!x.IsEveryoneNpc()));
 
             if (playerFactions.Count == 0) return;
             
             var players = new HashSet<MyIdentity>(MySession.Static.Players.GetAllIdentities().Where(x=>!MySession.Static.Players.IdentityIsNpc(x.IdentityId)));
 
-
+            int count = 0;
             foreach (var player in players)
             {
                 var playerFaction = MySession.Static.Factions.GetPlayerFaction(player.IdentityId);
                 foreach (var faction in playerFactions)
                 {
-                    if (Config.Instance.EnableConflict && playerFaction != null &&
-                        ConflictPairModule.InConflict(playerFaction.FactionId, faction.FactionId, out var foundPair) &&
-                        !foundPair.ConflictPending)
-                    {
-                        MySession.Static.Factions.SetReputationBetweenPlayerAndFaction(player.IdentityId, faction.FactionId,
-                            -500);
-                        continue;
-                    }
+                    var relation =
+                        MySession.Static.Factions.GetRelationBetweenPlayerAndFaction(player.IdentityId,
+                            faction.FactionId);
+                    if (relation == null  ||  !MySession.Static.Factions.HasRelationWithPlayer(player.IdentityId,faction.FactionId)) continue;
+                    count++;
+                    if (MySession.Static.Factions.GetRelationBetweenPlayerAndFaction(player.IdentityId,faction.FactionId) == null)
+                        if (!Config.Instance.EnableConflict ||
+                            !ConflictPairModule.InConflict(playerFaction.FactionId, faction.FactionId,
+                                out var foundPair) ||
+                            foundPair.ConflictPending)
+                        {
+                            MySession.Static.Factions.SetReputationBetweenPlayerAndFaction(player.IdentityId,faction.FactionId,0);
+                            continue;
+                        }
+                    
                     MySession.Static.Factions.SetReputationBetweenPlayerAndFaction(player.IdentityId, faction.FactionId,
-                        0);
+                        -500);
+
                 }
             }
-
+            Log.Warn($"{count} reputation changes made");
 
         }
 
         [ReflectedStaticMethod(Type = typeof(MyFactionCollection), Name = "SendFactionChange", OverrideTypes = new []{typeof(MyFactionStateChange), typeof(long), typeof(long), typeof(long)})]
-        private static Action <MyFactionStateChange,long,long,long> FactionStateChangeRequest;
+        private static Action <MyFactionStateChange,long,long,long> _factionStateChangeRequest;
 
         public static void RequestFactionChange(MyFactionStateChange action, long fromFactionId, long toFactionId,
             long playerId)
         {
-            FactionStateChangeRequest(action, fromFactionId, toFactionId, playerId);
+            _factionStateChangeRequest(action, fromFactionId, toFactionId, playerId);
         }
     }
 }

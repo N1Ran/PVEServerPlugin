@@ -38,17 +38,21 @@ namespace PVEServerPlugin
             switch (target)
             {
                 case MySlimBlock block:
-                    id = block.CubeGrid.BigOwners.Count> 0 ? block.CubeGrid.BigOwners[0]:0;
+                    id = block.CubeGrid.BigOwners.Count > 0 ? block.CubeGrid.BigOwners[0]:0;
                     break;
                 case MyCharacter _:
                     return;
+                case MyCubeGrid grid:
+                    id =  grid.BigOwners.Count > 0 ? grid.BigOwners[0]:0;
+                    break;
                 default:
                     id = 0;
                     break;
             }
 
+            if (id == 0 || MySession.Static.Players.IdentityIsNpc(id) || MySession.Static.Players.IdentityIsNpc(attackerId) || id == attackerId) return;
 
-            if (MyEntities.TryGetEntityById(info.AttackerId, out var attacker, true))
+            if (MyEntities.TryGetEntityById(attackerId, out var attacker, true))
             {
                 foreach (var zone in Config.Instance.PvpZones)
                 {
@@ -59,6 +63,16 @@ namespace PVEServerPlugin
                 if (attacker is MyVoxelBase)
                     return;
 
+                if (attacker is MyCubeBlock block)
+                {
+                    attackerId = block.CubeGrid.BigOwners[0];
+                }
+
+                if (attacker is MyHandToolBase handTool)
+                {
+                    attackerId = handTool.OwnerIdentityId;
+                }
+
                 if (attacker is MyAngleGrinder grinder)
                 {
                     attackerId = grinder.OwnerIdentityId;
@@ -66,13 +80,19 @@ namespace PVEServerPlugin
 
                 if (attacker is MyUserControllableGun controllableGun)
                 {
-                    attackerId = controllableGun.OwnerId;
+                    attackerId = controllableGun.CubeGrid.BigOwners[0];
+                }
+
+                if (attacker is MyAutomaticRifleGun gun)
+                {
+                    attackerId = gun.OwnerIdentityId;
                 }
 
                 if (attacker is MyShipToolBase tool)
                 {
-                    attackerId = tool.OwnerId;
+                    attackerId = tool.CubeGrid.BigOwners[0];
                 }
+
                 if (attacker is MyAutomaticRifleGun characterWeapon)
                 {
                     attackerId = characterWeapon.OwnerIdentityId;
@@ -80,21 +100,30 @@ namespace PVEServerPlugin
 
                 if (attacker is MyCubeGrid grid)
                 {
-                    attackerId = grid.BigOwners.Count > 0 ? grid.BigOwners[0] : 0;
+                    attackerId = grid.BigOwners[0];
                 }
 
                 if (attacker is MyLargeTurretBase turret)
                 {
-                    attackerId = turret.OwnerId;
+                    attackerId = turret.CubeGrid.BigOwners[0];
                 }
             }
+
 
             var attackerSteamId = MySession.Static.Players.TryGetSteamId(attackerId);
             var targetSteamId = MySession.Static.Players.TryGetSteamId(id);
 
-            if (ConflictPairModule.InConflict(attackerId,id, out var foundPair) && !foundPair.ConflictPending) return;
-            if (Config.Instance.EnableFactionDamage && MySession.Static.Factions.TryGetPlayerFaction(attackerId) == MySession.Static.Factions.TryGetPlayerFaction(id)) return;
-            if (MySession.Static.Players.IdentityIsNpc(attackerId) || id == 0|| (Config.Instance.EnableNoOwner && attackerId == 0) || MySession.Static.Players.IdentityIsNpc(id) || id == info.AttackerId || attackerSteamId == targetSteamId)return;
+            if (ConflictPairModule.InConflict(attackerId,id, out var foundPair) && (foundPair == null || !foundPair.ConflictPending)) return;
+
+            if (Config.Instance.EnableFactionDamage)
+            {
+                var fac1 = MySession.Static.Factions.TryGetPlayerFaction(attackerId);
+                var fac2 = MySession.Static.Factions.TryGetPlayerFaction(id);
+
+                if (fac2 != null && fac1 != null && fac2 == fac1) return;
+            } 
+
+            if ((Config.Instance.EnableNoOwner && attackerId == 0) || attackerSteamId == targetSteamId)return;
             info.Amount = 0;
         }
 

@@ -9,6 +9,7 @@ using Sandbox.Game.Multiplayer;
 using Sandbox.Game.World;
 using Sandbox.ModAPI;
 using Torch;
+using Torch.API.Managers;
 using Torch.Managers;
 using Torch.Utils;
 using VRage.Game.ModAPI;
@@ -16,7 +17,6 @@ using VRage.Network;
 
 namespace PVEServerPlugin
 {
-    [PatchShim]
     public static class ReputationPatch
     {
 

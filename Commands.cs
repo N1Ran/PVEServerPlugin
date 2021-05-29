@@ -13,7 +13,7 @@ namespace PVEServerPlugin
         [Permission(MyPromoteLevel.None)]
         public void PlayerChallenge(string playerName)
         {
-            if (!Config.Instance.EnableConflict)
+            if (!Config.Instance.EnableConflict || Core.NexusDetected)
             {
                 Context.Respond("Conflict is not enabled");
                 return;
@@ -46,7 +46,7 @@ namespace PVEServerPlugin
         public void FactionChallenge(string factionNameOrTag)
         {
 
-            if (!Config.Instance.EnableConflict)
+            if (!Config.Instance.EnableConflict || Core.NexusDetected)
             {
                 Context.Respond("Conflict is not enabled");
                 return;
@@ -87,7 +87,7 @@ namespace PVEServerPlugin
         public void AcceptChallenge()
         
         {
-            if (!Config.Instance.EnableConflict)
+            if (!Config.Instance.EnableConflict || Core.NexusDetected)
             {
                 Context.Respond("Conflict is not enabled");
                 return;
@@ -143,7 +143,7 @@ namespace PVEServerPlugin
         [Permission(MyPromoteLevel.None)]
         public void AcceptSubmission()
         {
-            if (!Config.Instance.EnableConflict)
+            if (!Config.Instance.EnableConflict || Core.NexusDetected)
             {
                 Context.Respond("Conflict is not enabled");
                 return;
@@ -193,7 +193,7 @@ namespace PVEServerPlugin
         public void FactionSubmit(string factionNameOrTag)
         {
 
-            if (!Config.Instance.EnableConflict)
+            if (!Config.Instance.EnableConflict || Core.NexusDetected)
             {
                 Context.Respond("Conflict is not enabled");
                 return;

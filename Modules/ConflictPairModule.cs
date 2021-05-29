@@ -32,13 +32,21 @@ namespace PVEServerPlugin.Modules
 
         private static void SaveConflictData()
         {
-            File.WriteAllText(Core.Instance.conflictDataPath, JsonConvert.SerializeObject(ConflictPairs, Formatting.Indented));
+            File.WriteAllText(Core.Instance.ConflictDataPath, JsonConvert.SerializeObject(ConflictPairs, Formatting.Indented));
         }
 
         public static bool InConflict(long id, long challengingId, out ConflictPairData foundPairModule)
         {
-            var inConflict = false;
             foundPairModule = null;
+            if (!Config.Instance.EnableConflict) return false;
+
+            if (Core.NexusDetected)
+            {
+                return MySession.Static.Factions.AreFactionsEnemies(id, challengingId) ||
+                       MySession.Static.Factions.IsFactionWithPlayerEnemy(id, challengingId) ||
+                       MySession.Static.Factions.IsFactionWithPlayerEnemy(challengingId, id);
+            }
+            var inConflict = false;
             foreach (var pair in ConflictPairs)
             {
                 if (pair.ChallengerId + pair.ChallengedId != id + challengingId) continue;

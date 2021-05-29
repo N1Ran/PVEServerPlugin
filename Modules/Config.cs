@@ -59,7 +59,7 @@ namespace PVEServerPlugin.Modules
             }
         }
 
-        [Display(Order = 3, Name = "Enable Conflicts", Description = "Toggles the state of the plugin")]
+        [Display(Order = 3, Name = "Enable Conflicts", Description = "Toggles the state of the plugin.  Defaults to war state if Nexus plugin is detected")]
         public bool EnableConflict
         {
             get => _enableChallenge;
@@ -70,7 +70,7 @@ namespace PVEServerPlugin.Modules
             }
         }
 
-        [Display(Order = 4, Name = "Allow Faction Member Damage", Description = "Toggles the state of the plugin")]
+        [Display(Order = 4, Name = "Allow Faction Member Damage", Description = "When enabled, faction members can kill and destroy each other's grids")]
         public bool EnableFactionDamage
         {
             get => _enableFactionDamage;
