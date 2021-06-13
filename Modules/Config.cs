@@ -32,6 +32,7 @@ namespace PVEServerPlugin.Modules
         {
             _conflictPairs = new ObservableCollection<ConflictPairModule>();
             _conflictPairs.CollectionChanged += ItemsCollectionChanged;
+            PropertyChanged += (sender, args) => Instance.Save();
 
             _pvpZones = new MtObservableCollection<Zone>();
             _pvpZones.CollectionChanged += ItemsCollectionChanged;
@@ -90,7 +91,6 @@ namespace PVEServerPlugin.Modules
             {
                 _pvpZones = value;
                 OnPropertyChanged();
-                Save();
             }
         }
 
@@ -98,7 +98,6 @@ namespace PVEServerPlugin.Modules
         private void ItemsCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
             OnPropertyChanged();
-            Instance.Save(); 
         }
 
         public void Save()
