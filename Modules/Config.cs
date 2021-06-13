@@ -44,7 +44,7 @@ namespace PVEServerPlugin.Modules
             set
             {
                 _enablePve = value;
-                OnPropertyChanged();
+                OnPropertySave();
             }
         }
 
@@ -55,7 +55,7 @@ namespace PVEServerPlugin.Modules
             set
             {
                 _enableNoOwner = value;
-                OnPropertyChanged();
+                OnPropertySave();
             }
         }
 
@@ -66,7 +66,7 @@ namespace PVEServerPlugin.Modules
             set
             {
                 _enableChallenge = value;
-                OnPropertyChanged();
+                OnPropertySave();
             }
         }
 
@@ -77,7 +77,7 @@ namespace PVEServerPlugin.Modules
             set
             {
                 _enableFactionDamage = value;
-                OnPropertyChanged();
+                OnPropertySave();
             }
         }
 
@@ -89,8 +89,7 @@ namespace PVEServerPlugin.Modules
             set
             {
                 _pvpZones = value;
-                OnPropertyChanged();
-                Save();
+                OnPropertySave();
             }
         }
 
@@ -99,6 +98,12 @@ namespace PVEServerPlugin.Modules
         {
             OnPropertyChanged();
             Instance.Save(); 
+        }
+
+        private void OnPropertySave()
+        {
+            OnPropertyChanged();
+            Save();
         }
 
         public void Save()
