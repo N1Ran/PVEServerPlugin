@@ -45,7 +45,7 @@ namespace PVEServerPlugin.Modules
             set
             {
                 _enablePve = value;
-                OnPropertyChanged();
+                OnPropertySave();
             }
         }
 
@@ -56,7 +56,7 @@ namespace PVEServerPlugin.Modules
             set
             {
                 _enableNoOwner = value;
-                OnPropertyChanged();
+                OnPropertySave();
             }
         }
 
@@ -67,7 +67,7 @@ namespace PVEServerPlugin.Modules
             set
             {
                 _enableChallenge = value;
-                OnPropertyChanged();
+                OnPropertySave();
             }
         }
 
@@ -78,7 +78,7 @@ namespace PVEServerPlugin.Modules
             set
             {
                 _enableFactionDamage = value;
-                OnPropertyChanged();
+                OnPropertySave();
             }
         }
 
@@ -98,6 +98,12 @@ namespace PVEServerPlugin.Modules
         private void ItemsCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
             OnPropertyChanged();
+        }
+
+        private void OnPropertySave()
+        {
+            OnPropertyChanged();
+            Save();
         }
 
         public void Save()
