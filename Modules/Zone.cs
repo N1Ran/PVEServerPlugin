@@ -1,15 +1,11 @@
 ﻿using System;
 using System.Collections.Specialized;
-using System.Windows.Documents;
 using System.Xml.Serialization;
 using Torch;
 using Torch.Views;
-using Sandbox.Game.Entities;
-using Sandbox.Game.EntityComponents;
 using VRage.Collections;
 using VRageMath;
 using VRage.Game.Entity;
-using VRage.Game.ModAPI.Ingame;
 
 
 namespace PVEServerPlugin.Modules
@@ -145,6 +141,7 @@ namespace PVEServerPlugin.Modules
 
         public bool IsWithinZoneRadius(MyEntity entity)
         {
+            if (!_enable) return false;
             var sphere = new BoundingSphere(new Vector3(_xValue, _yValue, _zValue), _radius);
             return sphere.Contains(entity.PositionComp.GetPosition()) == ContainmentType.Contains  ;
         }

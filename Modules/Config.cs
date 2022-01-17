@@ -23,6 +23,7 @@ namespace PVEServerPlugin.Modules
         private bool _loading;
         private XmlAttributeOverrides _overrides;
         private bool _enableFactionDamage = true;
+        private bool _allowLandingGear;
 
         public static Config Instance => _instance ?? (_instance = new Config());
 
@@ -45,7 +46,7 @@ namespace PVEServerPlugin.Modules
             set
             {
                 _enablePve = value;
-                OnPropertySave();
+                OnPropertyChanged();
             }
         }
 
@@ -56,7 +57,7 @@ namespace PVEServerPlugin.Modules
             set
             {
                 _enableNoOwner = value;
-                OnPropertySave();
+                OnPropertyChanged();
             }
         }
 
@@ -67,7 +68,7 @@ namespace PVEServerPlugin.Modules
             set
             {
                 _enableChallenge = value;
-                OnPropertySave();
+                OnPropertyChanged();
             }
         }
 
@@ -78,12 +79,22 @@ namespace PVEServerPlugin.Modules
             set
             {
                 _enableFactionDamage = value;
-                OnPropertySave();
+                OnPropertyChanged();
             }
         }
 
+        [Display(Order = 5, Name = "Allow Landing Gears", Description = "When enabled, players can use landing gear to attach and move grids")]
+        public bool AllowLandingGear
+        {
+            get => _allowLandingGear;
+            set
+            {
+                _allowLandingGear = value;
+                OnPropertyChanged();
+            }
+        }
 
-        [Display(Order = 5, EditorType = typeof(EmbeddedCollectionEditor))]
+        [Display(Order = 6, EditorType = typeof(EmbeddedCollectionEditor))]
         public MtObservableCollection<Zone> PvpZones
         {
             get => _pvpZones;
@@ -100,11 +111,6 @@ namespace PVEServerPlugin.Modules
             OnPropertyChanged();
         }
 
-        private void OnPropertySave()
-        {
-            OnPropertyChanged();
-            Save();
-        }
 
         public void Save()
         {
@@ -116,8 +122,7 @@ namespace PVEServerPlugin.Modules
                     var fileName = Path.Combine(Core.Instance.StoragePath, "PVEPlugin.cfg");
                     using (var writer = new StreamWriter(fileName))
                     {
-                        XmlSerializer x;
-                        x = _overrides != null ? new XmlSerializer(typeof(Config), _overrides) : new XmlSerializer(typeof(Config));
+                        var x = _overrides != null ? new XmlSerializer(typeof(Config), _overrides) : new XmlSerializer(typeof(Config));
                         x.Serialize(writer, _instance);
                         writer.Close();
                     }
@@ -173,8 +178,12 @@ namespace PVEServerPlugin.Modules
             {
                 lock (this)
                 {
-                    Log.Error(e, "Failed to load config" );
+                    Log.Error(e, "Failed to load config");
                 }
+            }
+            finally
+            {
+                _loading = false;
             }
         }
     }

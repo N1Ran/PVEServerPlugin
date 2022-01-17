@@ -100,13 +100,14 @@
     <Compile Include="Modules\Config.cs" />
     <Compile Include="Modules\ConflictPairModule.cs" />
     <Compile Include="Modules\MTObservableCollection.cs" />
+    <Compile Include="Patches\LandingGear.cs" />
     <Compile Include="ProcessHandlers\Base.cs" />
-    <Compile Include="Utility\Utilities.cs" />
+    <Compile Include="Utilities\IdentityUtility.cs" />
     <Compile Include="Modules\Zone.cs" />
     <Compile Include="ProcessHandlers\PvPZoneMessage.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ReputationPatch.cs" />
-    <Compile Include="Utility\EntityCache.cs" />
+    <Compile Include="Utilities\EntityCache.cs" />
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

@@ -1,26 +1,29 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
-using PVEServerPlugin.Modules;
 using Sandbox.Game.World;
-using Torch;
-using Torch.Mod;
-using Torch.Mod.Messages;
-using VRage.Game;
-using VRage.Game.Entity;
-using VRage.Plugins;
 
-namespace PVEServerPlugin.Utility
+namespace PVEServerPlugin.Utilities
 {
-    public static class Utilities
+    public static class IdentityUtility
     {
 
         public static long GetPlayerId(string name)
         {
-            long id = 0;
+            if (long.TryParse(name, out var id)) return id;
+
+            ulong.TryParse(name, out var steamId);
+
             foreach (var player in MySession.Static.Players.GetOnlinePlayers())
             {
-                if (string.IsNullOrEmpty(player.DisplayName) || !player.DisplayName.Equals(name,StringComparison.OrdinalIgnoreCase)) continue;
+                if (string.IsNullOrEmpty(player.DisplayName)) continue;
+
+                if (steamId > 0 && player.Id.SteamId == steamId)
+                {
+                    id = player.Identity.IdentityId;
+                    break;
+                }
+
+                if (!player.DisplayName.Equals(name,StringComparison.OrdinalIgnoreCase)) continue;
                 id = player.Identity.IdentityId;
                 break;
             }
@@ -42,6 +45,15 @@ namespace PVEServerPlugin.Utility
             return id;
         }
 
+
+        public static string GetIdentityName(long id)
+        {
+            string name = "Unknown";
+
+            //var factionName = MySession.Static.Factions.getpla
+
+            return name;
+        }
 
 
 

@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.Specialized;
+﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Torch;
@@ -19,15 +17,19 @@ namespace PVEServerPlugin.Modules
         public class ConflictPairData
         {
             [JsonProperty(Order = 1)]
-            public long ChallengerId { get; set; }
+            public string ChallengerName { get; set; }
             [JsonProperty(Order = 2)]
-            public long ChallengedId { get; set; }
+            public long ChallengerId { get; set; }
             [JsonProperty(Order = 3)]
-            public ulong ChangeRequestId { get; set; }
+            public long SubjectName { get; set; }
             [JsonProperty(Order = 4)]
-            public bool ConflictPending { get; set; }
+            public long SubjectId { get; set; }
             [JsonProperty(Order = 5)]
-            public bool ConflictSubmitted { get; set; }
+            public ulong ChangeRequestId { get; set; }
+            [JsonProperty(Order = 6)]
+            public ConflictType CurrentConflictType { get; set; }
+            [JsonProperty(Order = 7)]
+            public ConflictState CurrentConflictState { get; set; }
         }
 
         private static void SaveConflictData()
@@ -35,43 +37,65 @@ namespace PVEServerPlugin.Modules
             File.WriteAllText(Core.Instance.ConflictDataPath, JsonConvert.SerializeObject(ConflictPairs, Formatting.Indented));
         }
 
-        public static bool InConflict(long id, long challengingId, out ConflictPairData foundPairModule)
+        public static bool InConflict(long challengerId, long subjectId, ConflictType type, out ConflictPairData foundPairModule)
         {
             foundPairModule = null;
             if (!Config.Instance.EnableConflict) return false;
 
             if (Core.NexusDetected)
             {
-                return MySession.Static.Factions.AreFactionsEnemies(id, challengingId) ||
-                       MySession.Static.Factions.IsFactionWithPlayerEnemy(id, challengingId) ||
-                       MySession.Static.Factions.IsFactionWithPlayerEnemy(challengingId, id);
+                return MySession.Static.Factions.AreFactionsEnemies(challengerId, subjectId) ||
+                       MySession.Static.Factions.IsFactionWithPlayerEnemy(challengerId, subjectId) ||
+                       MySession.Static.Factions.IsFactionWithPlayerEnemy(subjectId, challengerId);
             }
             var inConflict = false;
             foreach (var pair in ConflictPairs)
             {
-                if (pair.ChallengerId + pair.ChallengedId != id + challengingId) continue;
-                inConflict = !pair.ConflictPending;
+                if (pair.ChallengerId + pair.SubjectId != challengerId + subjectId || pair.CurrentConflictType != type) continue;
+                inConflict = pair.CurrentConflictState == ConflictState.Active;
                 foundPairModule = pair;
             }
 
             return inConflict;
         }
 
-        public static void IssueChallenge(long id, long challengingId, ulong changeRequestId = 0)
+        public static bool InConflict(long challengerId, long subjectId,  out ConflictPairData foundPairModule)
         {
-            if (id == 0 || challengingId == 0 || changeRequestId == 0) return;
-            if (InConflict(id, challengingId, out var foundPair))
+            foundPairModule = null;
+            if (!Config.Instance.EnableConflict) return false;
+
+            if (Core.NexusDetected)
+            {
+                return MySession.Static.Factions.AreFactionsEnemies(challengerId, subjectId) ||
+                       MySession.Static.Factions.IsFactionWithPlayerEnemy(challengerId, subjectId) ||
+                       MySession.Static.Factions.IsFactionWithPlayerEnemy(subjectId, challengerId);
+            }
+            var inConflict = false;
+            foreach (var pair in ConflictPairs)
+            {
+                if (pair.ChallengerId + pair.SubjectId != challengerId + subjectId) continue;
+                inConflict = pair.CurrentConflictState == ConflictState.Active;
+                foundPairModule = pair;
+            }
+
+            return inConflict;
+        }
+
+        public static void IssueChallenge(long challengerId, long subjectId, ConflictType type, ulong changeRequestId = 0)
+        {
+            if (challengerId == 0 || subjectId == 0 || changeRequestId == 0) return;
+            if (InConflict(challengerId, subjectId,type, out var foundPair))
             {
                 if (foundPair.ChangeRequestId == changeRequestId) return;
-                foundPair.ConflictPending = false;
+                foundPair.CurrentConflictState = ConflictState.Active;
                 foundPair.ChangeRequestId = changeRequestId;
                 return;
             }
             
-            ConflictPairs.Add(new ConflictPairData{ChallengerId = challengingId, ChallengedId = id,ConflictPending = true,ChangeRequestId = changeRequestId});
+            ConflictPairs.Add(new ConflictPairData{CurrentConflictType = type, ChallengerId = challengerId, SubjectId = subjectId,CurrentConflictState = ConflictState.PendingConflict, ChangeRequestId = changeRequestId});
             SaveConflictData();
             HashSet<ulong> steamIds = new HashSet<ulong>();
-            var faction = MySession.Static.Factions.TryGetFactionById(challengingId);
+            var faction = MySession.Static.Factions.TryGetFactionById(subjectId);
             string challengerName = "";
             if (faction != null)
             {
@@ -79,13 +103,13 @@ namespace PVEServerPlugin.Modules
                 {
                     steamIds.Add(MySession.Static.Players.TryGetSteamId(memberId));
                 }
-                challengerName = MySession.Static.Factions.TryGetFactionById(id).Tag;
+                challengerName = MySession.Static.Factions.TryGetFactionById(challengerId).Tag;
 
             }
             else
             {
-                steamIds.Add(MySession.Static.Players.TryGetSteamId(challengingId));
-                challengerName = MySession.Static.Players.TryGetIdentity(id).DisplayName ?? "";
+                steamIds.Add(MySession.Static.Players.TryGetSteamId(subjectId));
+                challengerName = MySession.Static.Players.TryGetIdentity(challengerId).DisplayName ?? "";
             }
             if (steamIds.Count == 0 || string.IsNullOrEmpty(challengerName)) return;
             foreach (var steamId in steamIds)
@@ -95,15 +119,15 @@ namespace PVEServerPlugin.Modules
 
         }
 
-        public static void RequestSubmit(long id, long challengingId, ulong changeRequestId = 0)
+        public static void RequestSubmit(long challengerId, long subjectId, ConflictType type, ulong changeRequestId = 0)
         {
-            if (id == 0 || challengingId == 0) return;
-            if (changeRequestId == 0 ) return;
-            if (!InConflict(id, challengingId, out var foundPair) || foundPair.ChangeRequestId == changeRequestId)
+            if (challengerId == 0 || subjectId == 0) return;
+            if (changeRequestId == 0) return;
+            if (!InConflict(challengerId, subjectId, type, out var foundPair) || foundPair.ChangeRequestId == changeRequestId)
             {
                 return;
             }
-            if (foundPair.ConflictSubmitted || foundPair.ConflictPending)
+            if (foundPair.CurrentConflictState != ConflictState.Active)
             {
 
                 ConflictPairs.Remove(foundPair);
@@ -111,53 +135,91 @@ namespace PVEServerPlugin.Modules
                 return;
             }
 
-            foundPair.ConflictSubmitted = true;
+            foundPair.CurrentConflictState = ConflictState.PendingSubmission;
             foundPair.ChangeRequestId = changeRequestId;
             SaveConflictData();
             HashSet<ulong> steamIds = new HashSet<ulong>();
-            var faction = MySession.Static.Factions.TryGetFactionById(challengingId);
+            var faction = MySession.Static.Factions.TryGetFactionById(subjectId);
             string challengerName;
             if (faction != null)
             {
-                foreach (var (memberId,member) in faction.Members)
+                foreach (var (memberId, member) in faction.Members)
                 {
                     if (!member.IsFounder && !member.IsLeader) continue;
                     steamIds.Add(MySession.Static.Players.TryGetSteamId(memberId));
                 }
-                challengerName = MySession.Static.Factions.TryGetFactionById(id).Tag;
+                challengerName = MySession.Static.Factions.TryGetFactionById(challengerId).Tag;
 
             }
             else
             {
-                steamIds.Add(MySession.Static.Players.TryGetSteamId(challengingId));
-                challengerName = MySession.Static.Players.TryGetIdentity(id).DisplayName ?? "";
+                steamIds.Add(MySession.Static.Players.TryGetSteamId(subjectId));
+                challengerName = MySession.Static.Players.TryGetIdentity(challengerId).DisplayName ?? "";
             }
             if (steamIds.Count == 0 || string.IsNullOrEmpty(challengerName)) return;
             foreach (var steamId in steamIds)
             {
-                ModCommunication.SendMessageTo(new NotificationMessage($"{challengerName} has issued a submission",10000,MyFontEnum.White),steamId );
+                ModCommunication.SendMessageTo(new NotificationMessage($"{challengerName} has issued a submission", 10000, MyFontEnum.White), steamId);
             }
 
         }
 
-        public static void AcceptChallenge(long id, long challengingId, ulong changeRequestId = 0)
+        public static int RequestSubmit(long challengerId, ulong changeRequestId = 0)
+        {
+            if (changeRequestId == 0) return 0;
+
+            var setSubmission = 0;
+            var faction = MySession.Static.Factions.GetPlayerFaction(challengerId);
+            var validFaction = faction != null && (faction.IsLeader(challengerId) || faction.IsFounder(challengerId));
+            if (validFaction)
+            {
+                var player = MySession.Static.Players.TryGetPlayerBySteamId(changeRequestId);
+                if (player != null)
+                    validFaction = MySession.Static.Factions.GetPlayerFaction(player.Identity.IdentityId) != faction;
+            }
+
+            var toRemove = new List<ConflictPairData>();
+            var changeRequestIdentity = MySession.Static.Players.TryGetPlayerBySteamId(changeRequestId)?.Identity;
+            foreach (var pair in ConflictPairs)
+            {
+                if (pair.ChangeRequestId == changeRequestId) continue;
+                if (pair.SubjectId != challengerId && pair.ChallengerId != challengerId && (validFaction && !InConflict(challengerId, faction.FactionId, ConflictType.Faction, out _))) continue;
+                if (pair.CurrentConflictState == ConflictState.PendingSubmission && changeRequestIdentity != null)
+                {
+                    if (validFaction && faction.Members.ContainsKey(changeRequestIdentity.IdentityId)) continue;
+                    toRemove.Add(pair);
+                    continue;
+                }
+                pair.CurrentConflictState = ConflictState.PendingSubmission;
+                setSubmission++;
+                pair.ChangeRequestId = 0;
+            }
+
+            foreach (var pair in toRemove)
+            {
+                ConflictPairs.Remove(pair);
+            }
+            return setSubmission;
+        }
+
+        public static void AcceptChallenge(long challengerId, long subjectId, ConflictType type, ulong changeRequestId = 0)
         {
             if (changeRequestId == 0 ) return;
-            if (!InConflict(id, challengingId, out var foundPair) || foundPair.ChangeRequestId == changeRequestId)
+            if (!InConflict(challengerId, subjectId, type, out var foundPair) || foundPair.ChangeRequestId == changeRequestId)
             {
                 return;
             }
 
-            if (foundPair.ConflictSubmitted)
+            if (foundPair.CurrentConflictState != ConflictState.PendingConflict)
             {
                 return;
             }
 
-            foundPair.ConflictPending = false;
+            foundPair.CurrentConflictState = ConflictState.Active;
             foundPair.ChangeRequestId = changeRequestId;
             SaveConflictData();
             HashSet<ulong> steamIds = new HashSet<ulong>();
-            var faction = MySession.Static.Factions.TryGetFactionById(challengingId);
+            var faction = MySession.Static.Factions.TryGetFactionById(subjectId);
             string challengerName = "";
 
             if (faction != null)
@@ -167,10 +229,10 @@ namespace PVEServerPlugin.Modules
                     steamIds.Add(MySession.Static.Players.TryGetSteamId(memberId));
                 }
 
-                var challengerFaction = MySession.Static.Factions.TryGetFactionById(id);
+                var challengerFaction = MySession.Static.Factions.TryGetFactionById(challengerId);
                 if (challengerFaction != null)
                 {
-                    challengerName = $"{MySession.Static.Factions.TryGetFactionById(id).Tag} and {faction.Tag}";
+                    challengerName = $"{MySession.Static.Factions.TryGetFactionById(challengerId).Tag} and {faction.Tag}";
                     foreach (var memberId in faction.Members.Keys)
                     {
                         steamIds.Add(MySession.Static.Players.TryGetSteamId(memberId));
@@ -180,8 +242,8 @@ namespace PVEServerPlugin.Modules
             }
             else
             {
-                steamIds.Add(MySession.Static.Players.TryGetSteamId(challengingId));
-                challengerName = MySession.Static.Players.TryGetIdentity(id).DisplayName ?? "";
+                steamIds.Add(MySession.Static.Players.TryGetSteamId(subjectId));
+                challengerName = MySession.Static.Players.TryGetIdentity(challengerId).DisplayName ?? "";
             }
             if (steamIds.Count == 0 || string.IsNullOrEmpty(challengerName)) return;
             foreach (var steamId in steamIds)
@@ -192,35 +254,35 @@ namespace PVEServerPlugin.Modules
 
         }
 
-        public static bool AcceptChallenge(long id, ulong changeRequestId = 0)
+        public static int AcceptChallenge(long challengerId, ulong changeRequestId = 0)
         {
-            if (changeRequestId == 0) return false;
+            if (changeRequestId == 0) return 0;
 
-            var foundPendingConflict = false;
-            var faction = MySession.Static.Factions.GetPlayerFaction(id);
-            var validFaction = faction != null && (faction.IsLeader(id) || faction.IsFounder(id));
+            var setActive = 0;
+            var faction = MySession.Static.Factions.GetPlayerFaction(challengerId);
+            var validFaction = faction != null && (faction.IsLeader(challengerId) || faction.IsFounder(challengerId));
             if (validFaction)
             {
                 var player = MySession.Static.Players.TryGetPlayerBySteamId(changeRequestId);
                 if (player != null)
                     validFaction = MySession.Static.Factions.GetPlayerFaction(player.Identity.IdentityId) != faction;
             }
-            foreach (var pair in ConflictPairs.Where(x=>x.ConflictPending))
+            foreach (var pair in ConflictPairs.Where(x=>x.CurrentConflictState == ConflictState.PendingConflict))
             {
                 if (pair.ChangeRequestId == changeRequestId) continue;
-                if (pair.ChallengedId != id && pair.ChallengerId != id && (validFaction && !InConflict(id, faction.FactionId, out _))) continue;
-                pair.ConflictPending = false;
-                foundPendingConflict = true;
+                if (pair.SubjectId != challengerId && pair.ChallengerId != challengerId && (validFaction && !InConflict(challengerId, faction.FactionId, ConflictType.Faction, out _))) continue;
+                pair.CurrentConflictState = ConflictState.Active;
+                setActive ++;
                 pair.ChangeRequestId = 0;
             }
 
-            return foundPendingConflict;
+            return setActive;
         }
 
-        public static void AcceptSubmission(long id, long challengingId, ulong changeRequestId = 0)
+        public static void AcceptSubmission(long challengerId, long subjectId, ConflictType type, ulong changeRequestId = 0)
         {
             if (changeRequestId == 0 ) return;
-            if (!InConflict(id, challengingId, out var foundPair) || foundPair.ChangeRequestId == changeRequestId)
+            if (!InConflict(challengerId, subjectId, type, out var foundPair) || foundPair.ChangeRequestId == changeRequestId)
             {
                 return;
             }
@@ -228,31 +290,35 @@ namespace PVEServerPlugin.Modules
             ConflictPairs.Remove(foundPair);
             SaveConflictData();
             HashSet<ulong> steamIds = new HashSet<ulong>();
-            var faction = MySession.Static.Factions.TryGetFactionById(challengingId);
             string challengerName = "";
 
-            if (faction != null)
+            if (type == ConflictType.Faction)
             {
-                foreach (var (memberId,member) in faction.Members)
-                {
-                    steamIds.Add(MySession.Static.Players.TryGetSteamId(memberId));
-                }
+                var faction = MySession.Static.Factions.TryGetFactionById(subjectId);
 
-                var challengerFaction = MySession.Static.Factions.TryGetFactionById(id);
-                if (challengerFaction != null)
+                if (faction != null)
                 {
-                    challengerName = $"{MySession.Static.Factions.TryGetFactionById(id).Tag} and {faction.Tag}";
-                    foreach (var memberId in faction.Members.Keys)
+                    foreach (var (memberId, member) in faction.Members)
                     {
                         steamIds.Add(MySession.Static.Players.TryGetSteamId(memberId));
+                    }
+
+                    var challengerFaction = MySession.Static.Factions.TryGetFactionById(challengerId);
+                    if (challengerFaction != null)
+                    {
+                        challengerName = $"{MySession.Static.Factions.TryGetFactionById(challengerId).Tag} and {faction.Tag}";
+                        foreach (var memberId in faction.Members.Keys)
+                        {
+                            steamIds.Add(MySession.Static.Players.TryGetSteamId(memberId));
+                        }
                     }
                 }
 
             }
             else
             {
-                steamIds.Add(MySession.Static.Players.TryGetSteamId(challengingId));
-                challengerName = MySession.Static.Players.TryGetIdentity(id).DisplayName ?? "";
+                steamIds.Add(MySession.Static.Players.TryGetSteamId(subjectId));
+                challengerName = MySession.Static.Players.TryGetIdentity(challengerId).DisplayName ?? "";
             }
             if (Config.Instance.EnableConflict)Core.Instance.RecheckReputations();
             if (steamIds.Count == 0 || string.IsNullOrEmpty(challengerName)) return;
@@ -265,13 +331,13 @@ namespace PVEServerPlugin.Modules
 
         }
 
-        public static bool AcceptSubmission(long id, ulong changeRequestId = 0)
+        public static int AcceptSubmission(long challengerId, ulong changeRequestId = 0)
         {
-            if (changeRequestId == 0) return false;
-            var foundPendingConflict = false;
-            var faction = MySession.Static.Factions.GetPlayerFaction(id);
+            if (changeRequestId == 0) return 0;
+            var submissionAccepted = 0;
+            var faction = MySession.Static.Factions.GetPlayerFaction(challengerId);
             
-            var validFaction = faction != null && (faction.IsLeader(id) || faction.IsFounder(id));
+            var validFaction = faction != null && (faction.IsLeader(challengerId) || faction.IsFounder(challengerId));
 
             if (validFaction)
             {
@@ -281,29 +347,86 @@ namespace PVEServerPlugin.Modules
             }
             HashSet<ConflictPairData> toRemove = new HashSet<ConflictPairData>();
             
-            foreach (var pair in ConflictPairs.Where(x=>x.ConflictSubmitted))
+            foreach (var pair in ConflictPairs.Where(x=>x.CurrentConflictState == ConflictState.PendingSubmission))
             {
                 if (pair.ChangeRequestId == changeRequestId) continue;
 
-                if (validFaction && (pair.ChallengedId == faction.FactionId || pair.ChallengerId == faction.FactionId))
+                if (validFaction && pair.CurrentConflictType == ConflictType.Faction && (pair.SubjectId == faction.FactionId || pair.ChallengerId == faction.FactionId))
                 {
                     toRemove.Add(pair);
-                    foundPendingConflict = true;
+                    submissionAccepted ++;
                     continue;
                 }
 
-                if (pair.ChallengerId != id && pair.ChallengedId != id) continue;
+                if (pair.ChallengerId != challengerId && pair.SubjectId != challengerId) continue;
                 toRemove.Add(pair);
-                foundPendingConflict = true;
+                submissionAccepted ++;
 
             }
             RemovePairs(toRemove);
             Core.Instance.RecheckReputations();
 
-            return foundPendingConflict;
+            return submissionAccepted;
+        }
+
+        public List<string> GetPlayerPendingConflicts(long id)
+        {
+
+            var conflicts = new List<string>();
+            var pendingConflicts = new List<ConflictPairData>(ConflictPairs.Where(x => x.CurrentConflictState == ConflictState.PendingConflict));
+            if (pendingConflicts.Count > 0 && id > 0)
+            {
+                long factionId = 0;
+                var faction = MySession.Static.Factions.GetPlayerFaction(id);
+                if (faction.FounderId == id || faction.IsLeader(id))
+                {
+                    factionId = faction.FactionId;
+                }
+
+                foreach (var conflict in pendingConflicts)
+                {
+                    if (conflict.SubjectId != id && conflict.ChallengerId != id &&  conflict.SubjectId != factionId && conflict.ChallengerId != factionId) continue;
+                }
+            }
+
+            return conflicts;
         }
 
 
+        public List<string> GetPlayerConflicts(long id)
+        {
+            var conflicts = new List<string>();
+            var currentConflicts = new List<ConflictPairData>(ConflictPairs.Where(x => x.CurrentConflictState == ConflictState.Active));
+            if (currentConflicts.Count > 0 && id > 0)
+            {
+                long factionId = 0;
+                var faction = MySession.Static.Factions.GetPlayerFaction(id);
+                if (faction.FounderId == id || faction.IsLeader(id))
+                {
+                    factionId = faction.FactionId;
+                }
+
+                foreach (var conflict in currentConflicts)
+                {
+                    if (conflict.SubjectId != id && conflict.ChallengerId != id &&  conflict.SubjectId != factionId && conflict.ChallengerId != factionId) continue;
+                }
+            }
+
+            return conflicts;
+        }
+
+        public enum ConflictState
+        {
+            PendingSubmission,
+            PendingConflict,
+            Active
+        }
+
+        public enum ConflictType
+        {
+            Player,
+            Faction
+        }
 
         private static void RemovePairs(HashSet<ConflictPairData> toRemove)
         {

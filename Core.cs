@@ -6,7 +6,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using PVEServerPlugin.Modules;
 using System.Windows.Controls;
-using Microsoft.Win32;
 using Newtonsoft.Json;
 using NLog;
 using PVEServerPlugin.ProcessHandlers;
@@ -85,7 +84,7 @@ namespace PVEServerPlugin
 
             if (MyAPIGateway.Session == null)
                 return;
-            Utility.EntityCache.Update();
+            Utilities.EntityCache.Update();
         }
 
         private void SessionChanged(ITorchSession session, TorchSessionState newstate)
@@ -94,14 +93,16 @@ namespace PVEServerPlugin
             switch (newstate)
             {
                 case TorchSessionState.Loading:
-                   var storageDir = Path.Combine(Torch.CurrentSession.KeenSession.CurrentPath, "Storage");
                    if (NexusDetected) break;
+                   var storageDir = Path.Combine(Torch.CurrentSession.KeenSession.CurrentPath, "Storage");
+                   if (!Directory.Exists(storageDir)) Directory.CreateDirectory(storageDir);
                    ConflictDataPath = Path.Combine(storageDir, "Conflict.json");
                     if (!File.Exists(ConflictDataPath))
                     {
                         if (!Directory.Exists(storageDir)) Directory.CreateDirectory(storageDir);
-                        File.Create(ConflictDataPath);
+                        var conFileStream = File.Create(ConflictDataPath);
                         Log.Warn($"Creating conflict data at {ConflictDataPath}");
+                        conFileStream.Dispose();
                     }
 
                     break;
@@ -233,7 +234,7 @@ namespace PVEServerPlugin
                         if (!Config.Instance.EnableConflict ||
                             !ConflictPairModule.InConflict(playerFaction.FactionId, faction.FactionId,
                                 out var foundPair) ||
-                            foundPair.ConflictPending)
+                            foundPair.CurrentConflictState == ConflictPairModule.ConflictState.PendingConflict)
                         {
                             MySession.Static.Factions.SetReputationBetweenPlayerAndFaction(player.IdentityId,faction.FactionId,0);
                             continue;

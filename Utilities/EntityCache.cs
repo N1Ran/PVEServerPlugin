@@ -4,11 +4,10 @@ using System.Linq;
 using System.Threading;
 using Sandbox;
 using Sandbox.Game.Entities;
-using Sandbox.Game.Entities.Cube;
 using VRage;
 using VRage.Game.Entity;
 
-namespace PVEServerPlugin.Utility
+namespace PVEServerPlugin.Utilities
 {
     public class EntityCache
     {

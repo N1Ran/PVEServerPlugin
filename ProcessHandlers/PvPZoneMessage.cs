@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Runtime.InteropServices;
 using PVEServerPlugin.Modules;
 using Sandbox.Game.Entities;
 using Sandbox.Game.Entities.Character;
@@ -25,7 +24,7 @@ namespace PVEServerPlugin.ProcessHandlers
         {
             var entities = new HashSet<MyEntity>();
             
-            Utility.EntityCache.GetEntities(entities);
+            Utilities.EntityCache.GetEntities(entities);
 
             if (entities.Count == 0) return;
             var zones = Config.Instance.PvpZones;

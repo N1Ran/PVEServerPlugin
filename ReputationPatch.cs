@@ -1,17 +1,10 @@
-﻿using System;
-using System.Linq;
+﻿using System.Linq;
 using System.Reflection;
 using NLog;
 using PVEServerPlugin.Modules;
-using SpaceEngineers.Game.Entities.Blocks;
 using Torch.Managers.PatchManager;
 using Sandbox.Game.Multiplayer;
 using Sandbox.Game.World;
-using Sandbox.ModAPI;
-using Torch;
-using Torch.API.Managers;
-using Torch.Managers;
-using Torch.Utils;
 using VRage.Game.ModAPI;
 using VRage.Network;
 
@@ -40,8 +33,8 @@ namespace PVEServerPlugin
                 MySession.Static.Factions.IsNpcFaction(toFactionId) ||
                 MySession.Static.Players.IdentityIsNpc(playerId)) return true;
             if (action != MyFactionStateChange.DeclareWar) return true;
-            if (Config.Instance.EnableConflict && ConflictPairModule.InConflict(fromFactionId, toFactionId, out var foundPair) && !foundPair.ConflictPending) return true;
-            ConflictPairModule.IssueChallenge(fromFactionId,toFactionId,MyEventContext.Current.Sender.Value);
+            if (Config.Instance.EnableConflict && ConflictPairModule.InConflict(fromFactionId, toFactionId, out var foundPair) && foundPair.CurrentConflictState == ConflictPairModule.ConflictState.Active) return true;
+            ConflictPairModule.IssueChallenge(fromFactionId,toFactionId,ConflictPairModule.ConflictType.Faction,MyEventContext.Current.Sender.Value);
             Core.RequestFactionChange(MyFactionStateChange.AcceptPeace, fromFactionId, toFactionId, playerId);
             return false;
         }
@@ -52,7 +45,7 @@ namespace PVEServerPlugin
         {
             if (MySession.Static.Players.IdentityIsNpc(playerIdentityId) ||
                 MySession.Static.Players.IdentityIsNpc(attackedIdentityId)) return true;
-            return (Config.Instance.EnableConflict && ConflictPairModule.InConflict(playerIdentityId,attackedIdentityId, out var foundPair) && !foundPair.ConflictPending )||MySession.Static.Factions.GetNpcFactions().Any(x =>
+            return (Config.Instance.EnableConflict && ConflictPairModule.InConflict(playerIdentityId,attackedIdentityId, out var foundPair) && foundPair.CurrentConflictState == ConflictPairModule.ConflictState.Active )||MySession.Static.Factions.GetNpcFactions().Any(x =>
                 x.Members.ContainsKey(playerIdentityId) || x.Members.ContainsKey(attackedIdentityId));
         }
 
