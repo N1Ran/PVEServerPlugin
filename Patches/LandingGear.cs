@@ -11,17 +11,15 @@ using VRageMath;
 
 namespace PVEServerPlugin.Patches
 {
-    
+   /* 
     [PatchShim]
     public class LandingGear
     {
         public void Patch(PatchContext ctx)
         {
-            /*
             ctx.GetPattern(typeof(MyLandingGear).GetMethod("CanAttachTo",
                     BindingFlags.Instance | BindingFlags.NonPublic)).Prefixes
                 .Add(typeof(LandingGear).GetMethod(nameof(AttachCheck), BindingFlags.NonPublic));
-            */
         }
 
 
@@ -85,4 +83,5 @@ namespace PVEServerPlugin.Patches
         }
 
     }
+    */
 }
