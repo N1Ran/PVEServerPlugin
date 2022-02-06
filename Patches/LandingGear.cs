@@ -11,24 +11,25 @@ using VRageMath;
 
 namespace PVEServerPlugin.Patches
 {
-   /* 
     [PatchShim]
-    public class LandingGear
+    public static class LandingGear
     {
-        public void Patch(PatchContext ctx)
+        public static void Patch(PatchContext ctx)
         {
             ctx.GetPattern(typeof(MyLandingGear).GetMethod("CanAttachTo",
                     BindingFlags.Instance | BindingFlags.NonPublic)).Prefixes
-                .Add(typeof(LandingGear).GetMethod(nameof(AttachCheck), BindingFlags.NonPublic));
+                .Add(typeof(LandingGear).GetMethod(nameof(AttachCheck), BindingFlags.NonPublic | BindingFlags.Static));
         }
 
 
-        public bool AttachToPatch(ref bool __result, MyLandingGear __instance, MyEntity entity, Vector3D worldPos)
+        private static bool AttachCheck(ref bool __result, MyLandingGear __instance, MyEntity entity, Vector3D worldPos)
         {
             if (!Config.Instance.EnablePlugin  || Config.Instance.AllowLandingGear) return true;
 
-            var firstOwner = __instance.CubeGrid.BigOwners[0];
+            var lgGrid = __instance.CubeGrid;
 
+            var firstOwner = lgGrid != null && lgGrid.BigOwners.Count > 0 ? lgGrid.BigOwners[0] : 0;
+            
             if (firstOwner == 0)
             {
                 __result = false;
@@ -65,7 +66,7 @@ namespace PVEServerPlugin.Patches
                     return true;
             }
 
-            if (secondOwner == firstOwner || firstOwner == 0 || secondOwner == 0) return true;
+            if (secondOwner == firstOwner || secondOwner == 0) return true;
             var attackerSteamId = MySession.Static.Players.TryGetSteamId(firstOwner);
             var targetSteamId = MySession.Static.Players.TryGetSteamId(secondOwner);
             if (attackerSteamId == targetSteamId) return true;
@@ -83,5 +84,4 @@ namespace PVEServerPlugin.Patches
         }
 
     }
-    */
 }
