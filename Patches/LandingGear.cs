@@ -25,10 +25,10 @@ namespace PVEServerPlugin.Patches
         private static bool AttachCheck(ref bool __result, MyLandingGear __instance, MyEntity entity, Vector3D worldPos)
         {
             if (!Config.Instance.EnablePlugin  || Config.Instance.AllowLandingGear) return true;
-
             var lgGrid = __instance.CubeGrid;
-
-            var firstOwner = lgGrid != null && lgGrid.BigOwners.Count > 0 ? lgGrid.BigOwners[0] : 0;
+            if (lgGrid == entity || entity.MarkedForClose) return true;
+            
+            var firstOwner = lgGrid != null && lgGrid.BigOwners.Count > 0 ? lgGrid.BigOwners[0] : __instance.OwnerId;
             
             if (firstOwner == 0)
             {
