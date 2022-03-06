@@ -16,10 +16,10 @@ namespace PVEServerPlugin.Modules
         private bool _enablePve;
         private bool _enableChallenge;
         private bool _enableNoOwner;
-        private MtObservableCollection<Zone> _pvpZones;
+        private MtObservableCollection<Zone> _pvpZones = new MtObservableCollection<Zone>();
         private static readonly Logger Log = LogManager.GetCurrentClassLogger();
 
-        private ObservableCollection<ConflictPairModule> _conflictPairs;
+        private ObservableCollection<ConflictPairModule> _conflictPairs = new ObservableCollection<ConflictPairModule>();
         private bool _loading;
         private XmlAttributeOverrides _overrides;
         private bool _enableFactionDamage = true;
@@ -31,11 +31,8 @@ namespace PVEServerPlugin.Modules
 
         public Config()
         {
-            _conflictPairs = new ObservableCollection<ConflictPairModule>();
             _conflictPairs.CollectionChanged += ItemsCollectionChanged;
             PropertyChanged += (sender, args) => Instance.Save();
-
-            _pvpZones = new MtObservableCollection<Zone>();
             _pvpZones.CollectionChanged += ItemsCollectionChanged;
         }
 

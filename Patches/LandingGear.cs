@@ -1,5 +1,7 @@
 ﻿using System.Collections;
+using System.Linq;
 using System.Reflection;
+using System.Security.RightsManagement;
 using PVEServerPlugin.Modules;
 using Sandbox.Game.Entities;
 using Sandbox.Game.Entities.Cube;
@@ -25,47 +27,43 @@ namespace PVEServerPlugin.Patches
         private static bool AttachCheck(ref bool __result, MyLandingGear __instance, MyEntity entity, Vector3D worldPos)
         {
             if (!Config.Instance.EnablePlugin  || Config.Instance.AllowLandingGear) return true;
-            var lgGrid = __instance.CubeGrid;
-            if (lgGrid == entity || entity.MarkedForClose) return true;
+            if (__instance == entity || __instance.MarkedForClose || entity.MarkedForClose) return true;
+
+            var grid1 = __instance.CubeGrid;
+
+            if (grid1 == entity) return true;
             
-            var firstOwner = lgGrid != null && lgGrid.BigOwners.Count > 0 ? lgGrid.BigOwners[0] : __instance.OwnerId;
-            
-            if (firstOwner == 0)
-            {
-                __result = false;
-                return false;
-            }
-            long secondOwner;
+            MyCubeGrid grid2 = null;
             switch (entity)
             {
                 case MyCubeGrid grid:
-                    secondOwner = grid.BigOwners[0];
-                    if (Config.Instance.PvpZones?.Count > 0)
-                    {
-                        foreach (var zone in Config.Instance.PvpZones)
-                        {
-                            if (!zone.IsWithinZoneRadius(grid)) continue;
-                            return  true;
-                        }
-                    }
-
+                    grid2 = grid;
                     break;
                 case MyCubeBlock block:
-                    secondOwner = block.CubeGrid.BigOwners[0];
-                    if (Config.Instance.PvpZones?.Count > 0)
-                    {
-                        foreach (var zone in Config.Instance.PvpZones)
-                        {
-                            if (!zone.IsWithinZoneRadius(block.CubeGrid)) continue;
-                            return true;
-                        }
-                    }
-
+                    grid2 = block.CubeGrid;
                     break;
-                default:
-                    return true;
             }
 
+            if (grid2 == null || grid1 == grid2) return true;
+
+            __result = CanAttach(grid1, grid2, worldPos);
+            return __result;
+
+        }
+
+
+        private static bool CanAttach(MyCubeGrid grid1, MyCubeGrid grid2, Vector3D position)
+        {
+
+            if (Config.Instance.PvpZones?.Count > 0)
+            {
+                if (Config.Instance.PvpZones.Any(zone =>
+                        zone.IsWithinZoneRadius(position))) return true;
+            }
+
+            var firstOwner = TryGetOwner(grid1);
+            var secondOwner = TryGetOwner(grid2);
+            
             if (secondOwner == firstOwner || secondOwner == 0) return true;
             var attackerSteamId = MySession.Static.Players.TryGetSteamId(firstOwner);
             var targetSteamId = MySession.Static.Players.TryGetSteamId(secondOwner);
@@ -77,10 +75,35 @@ namespace PVEServerPlugin.Patches
                 if (firstOwnerFaction != null && secondOwnerFaction != null &&
                     firstOwnerFaction == secondOwnerFaction) return true;
             }
-            if (ConflictPairModule.InConflict(firstOwner,secondOwner, out var foundPair) && (foundPair == null || foundPair.CurrentConflictState == ConflictPairModule.ConflictState.Active)) return true;
+            if (ConflictPairModule.InConflict(firstOwner,secondOwner, out var foundPair) 
+                && (foundPair == null || foundPair.CurrentConflictState == ConflictPairModule.ConflictState.Active)) return true;
 
-            __result = false;
             return false;
+        }
+
+        private static long TryGetOwner(MyCubeGrid grid)
+        {
+            long owner = 0;
+            if (grid.BigOwners?.Count > 0) owner = grid.BigOwners.FirstOrDefault();
+
+            if (owner == 0)
+            {
+                foreach (var block in grid.CubeBlocks)
+                {
+                    if (block.OwnerId + block.BuiltBy == 0) continue;
+                    if (block.OwnerId > 0)
+                    {
+                        owner = block.OwnerId;
+                    }
+                    else
+                    {
+                        owner = block.BuiltBy;
+                    }
+                }
+            }
+
+
+            return owner;
         }
 
     }

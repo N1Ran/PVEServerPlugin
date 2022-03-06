@@ -146,6 +146,13 @@ namespace PVEServerPlugin.Modules
             return sphere.Contains(entity.PositionComp.GetPosition()) == ContainmentType.Contains  ;
         }
         
+        public bool IsWithinZoneRadius(Vector3D position)
+        {
+            if (!_enable) return false;
+            var sphere = new BoundingSphere(new Vector3(_xValue, _yValue, _zValue), _radius);
+            return sphere.Contains(position) == ContainmentType.Contains  ;
+        }
+        
         
     }
 }
