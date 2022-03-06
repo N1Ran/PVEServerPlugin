@@ -75,10 +75,8 @@ namespace PVEServerPlugin.Patches
                 if (firstOwnerFaction != null && secondOwnerFaction != null &&
                     firstOwnerFaction == secondOwnerFaction) return true;
             }
-            if (ConflictPairModule.InConflict(firstOwner,secondOwner, out var foundPair) 
-                && (foundPair == null || foundPair.CurrentConflictState == ConflictPairModule.ConflictState.Active)) return true;
-
-            return false;
+            return ConflictPairModule.InConflict(firstOwner,secondOwner, out var foundPair) 
+                   && (foundPair == null || foundPair.CurrentConflictState == ConflictPairModule.ConflictState.Active);
         }
 
         private static long TryGetOwner(MyCubeGrid grid)
@@ -86,20 +84,10 @@ namespace PVEServerPlugin.Patches
             long owner = 0;
             if (grid.BigOwners?.Count > 0) owner = grid.BigOwners.FirstOrDefault();
 
-            if (owner == 0)
+            if (owner > 0) return owner;
+            foreach (var block in grid.CubeBlocks.Where(block => block.OwnerId + block.BuiltBy != 0))
             {
-                foreach (var block in grid.CubeBlocks)
-                {
-                    if (block.OwnerId + block.BuiltBy == 0) continue;
-                    if (block.OwnerId > 0)
-                    {
-                        owner = block.OwnerId;
-                    }
-                    else
-                    {
-                        owner = block.BuiltBy;
-                    }
-                }
+                owner = block.OwnerId > 0 ? block.OwnerId : block.BuiltBy;
             }
 
 
