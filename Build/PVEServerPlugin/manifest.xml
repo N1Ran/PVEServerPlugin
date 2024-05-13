@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<PluginManifest xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <Name>PVEServerPlugin</Name>
+  <Guid>1A152879-6530-4491-8FCE-66F947863FB4</Guid>
+  <Repository>ReputationNeutralizer</Repository>
+  <Version>v1.4.915-a69cf026</Version>
+</PluginManifest>

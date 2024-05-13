@@ -236,17 +236,22 @@ namespace PVEServerPlugin
                                 out var foundPair) ||
                             foundPair.CurrentConflictState == ConflictPairModule.ConflictState.PendingConflict)
                         {
-                            MySession.Static.Factions.SetReputationBetweenPlayerAndFaction(player.IdentityId,faction.FactionId,0);
+                            SetReputationBetweenPlayerAndFaction(player.IdentityId,faction.FactionId,0);
                             continue;
                         }
                     
-                    MySession.Static.Factions.SetReputationBetweenPlayerAndFaction(player.IdentityId, faction.FactionId,
+                    SetReputationBetweenPlayerAndFaction(player.IdentityId, faction.FactionId,
                         -500);
 
                 }
             }
             Log.Warn($"{count} reputation changes made");
 
+        }
+
+        private void SetReputationBetweenPlayerAndFaction(long playerId, long factionId, int amount, ReputationChangeReason reason = ReputationChangeReason.None)
+        {
+            MySession.Static.Factions.SetReputationBetweenPlayerAndFaction(playerId, factionId, amount, reason);
         }
 
         [ReflectedStaticMethod(Type = typeof(MyFactionCollection), Name = "SendFactionChange", OverrideTypes = new []{typeof(MyFactionStateChange), typeof(long), typeof(long), typeof(long)})]
