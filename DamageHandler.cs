@@ -22,7 +22,7 @@ namespace PVEServerPlugin
 
             _init = true;
 
-            MyAPIGateway.Session.DamageSystem.RegisterBeforeDamageHandler(1, ProcessDamage);
+            MyAPIGateway.Session.DamageSystem.RegisterBeforeDamageHandler(0, ProcessDamage);
         }
 
 
@@ -73,7 +73,7 @@ namespace PVEServerPlugin
 
                 if (attacker is MyCubeBlock block)
                 {
-                    attackerId = block.CubeGrid.BigOwners.Count > 0 ? block.CubeGrid.BigOwners[0] : 0;
+                    attackerId = block.CubeGrid.BigOwners.Count > 0 ? block.CubeGrid.BigOwners[0]:0;
                 }
 
                 if (attacker is MyHandToolBase handTool)
@@ -88,7 +88,7 @@ namespace PVEServerPlugin
 
                 if (attacker is MyUserControllableGun controllableGun)
                 {
-                    attackerId = controllableGun.CubeGrid.BigOwners.Count > 0 ? controllableGun.CubeGrid.BigOwners[0] : 0;
+                    attackerId = controllableGun.CubeGrid.BigOwners.Count > 0 ? controllableGun.CubeGrid.BigOwners[0]:0;
                 }
 
                 if (attacker is MyAutomaticRifleGun gun)
@@ -98,7 +98,7 @@ namespace PVEServerPlugin
 
                 if (attacker is MyShipToolBase tool)
                 {
-                    attackerId = tool.CubeGrid.BigOwners.Count > 0 ?tool.CubeGrid.BigOwners[0]:0;
+                    attackerId = tool.CubeGrid.BigOwners.Count > 0 ? tool.CubeGrid.BigOwners[0]:0;
                 }
 
                 if (attacker is MyAutomaticRifleGun characterWeapon)
@@ -113,7 +113,7 @@ namespace PVEServerPlugin
 
                 if (attacker is MyLargeTurretBase turret)
                 {
-                    attackerId = turret.CubeGrid.BigOwners.Count > 0 ? turret.CubeGrid.BigOwners[0] : 0;
+                    attackerId = turret.CubeGrid.BigOwners.Count > 0 ? turret.CubeGrid.BigOwners[0]:0;
                 }
             }
 
@@ -136,7 +136,7 @@ namespace PVEServerPlugin
             } 
 
             if (attackerSteamId == targetSteamId)return;
-            info.Amount = 0;
+            info.Amount = 0;        
         }
 
     }
